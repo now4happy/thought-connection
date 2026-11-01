@@ -1,0 +1,68 @@
+{
+  "version": "3.3.10-proposal",
+  "status": "제안 (사용자 승인 전). ko 이외 5개 언어는 원어민 검토 대기, 특히 hi. 기존 v3.3.9 카탈로그 61개 키는 바꾸지 않고, 이 8개 키만 더한다.",
+  "placeholders": "{s} = 남은 초(정수), {t} = 다시 열리는 시각(사용자 시간대, 브라우저 Intl로 표기)",
+  "keys": ["q_minute", "q_unknown", "q_day", "q_zero", "q_ready", "q_ph_wait", "q_ph_closed", "q_detail"],
+  "strings": {
+    "ko": {
+      "q_minute": "요청이 잠깐 몰렸어요. {s}초 뒤에 다시 보낼 수 있어요.",
+      "q_unknown": "무료 사용량이 잠깐 찼어요. {s}초 뒤에 한 번만 다시 보내 보세요. 그래도 안 되면 오늘 몫을 다 쓴 걸 수 있어요.",
+      "q_day": "오늘 무료 사용량을 다 썼어요. {t}부터 다시 대화할 수 있어요.",
+      "q_zero": "지금 이 AI 모델은 무료로 쓸 수 있는 양이 0으로 잡혀 있어요. 관리자에게 알려 주세요.",
+      "q_ready": "이제 다시 보낼 수 있어요.",
+      "q_ph_wait": "{s}초 뒤에 보낼 수 있어요",
+      "q_ph_closed": "지금은 보낼 수 없어요",
+      "q_detail": "자세히"
+    },
+    "en": {
+      "q_minute": "Too many requests just now. You can send again in {s}s.",
+      "q_unknown": "The free allowance is full for the moment. Try sending once more in {s}s. If it still fails, today's share may be used up.",
+      "q_day": "Today's free usage is used up. You can chat again from {t}.",
+      "q_zero": "This AI model currently has a free allowance of 0. Please let the admin know.",
+      "q_ready": "You can send again now.",
+      "q_ph_wait": "You can send in {s}s",
+      "q_ph_closed": "Sending is paused for now",
+      "q_detail": "Details"
+    },
+    "es-419": {
+      "q_minute": "Llegaron muchas solicitudes de golpe. Podrás enviar de nuevo en {s} s.",
+      "q_unknown": "El uso gratuito se llenó por un momento. Intenta enviarlo una vez más en {s} s. Si sigue sin funcionar, puede que ya se haya agotado lo de hoy.",
+      "q_day": "Se agotó el uso gratuito de hoy. Podrás volver a conversar desde {t}.",
+      "q_zero": "Por ahora este modelo de IA tiene un uso gratuito de 0. Avísale al administrador.",
+      "q_ready": "Ya puedes enviarlo de nuevo.",
+      "q_ph_wait": "Podrás enviar en {s} s",
+      "q_ph_closed": "Por ahora no se puede enviar",
+      "q_detail": "Detalles"
+    },
+    "hi": {
+      "q_minute": "अभी एक साथ बहुत अनुरोध आ गए। {s} सेकंड बाद फिर भेज सकते हो।",
+      "q_unknown": "मुफ़्त इस्तेमाल की सीमा थोड़ी देर के लिए भर गई है। {s} सेकंड बाद एक बार फिर भेजकर देखो। फिर भी न चले तो शायद आज का हिस्सा ख़त्म हो गया है।",
+      "q_day": "आज का मुफ़्त इस्तेमाल ख़त्म हो गया। {t} से फिर बात कर सकते हो।",
+      "q_zero": "इस AI मॉडल की मुफ़्त सीमा अभी 0 रखी गई है। एडमिन को बताओ।",
+      "q_ready": "अब फिर से भेज सकते हो।",
+      "q_ph_wait": "{s} सेकंड बाद भेज सकते हो",
+      "q_ph_closed": "अभी भेजना रुका हुआ है",
+      "q_detail": "विवरण"
+    },
+    "zh-TW": {
+      "q_minute": "剛剛請求太集中了。{s} 秒後可以再送出。",
+      "q_unknown": "免費用量暫時滿了。請在 {s} 秒後再送一次就好。如果還是不行，可能是今天的額度用完了。",
+      "q_day": "今天的免費用量已經用完了。{t} 起可以再聊。",
+      "q_zero": "這個 AI 模型目前的免費額度設定為 0。請告訴管理員。",
+      "q_ready": "現在可以再送出了。",
+      "q_ph_wait": "{s} 秒後可以送出",
+      "q_ph_closed": "現在暫時無法送出",
+      "q_detail": "詳細資訊"
+    },
+    "ja": {
+      "q_minute": "リクエストが一度に集中しました。{s}秒後にもう一度送れます。",
+      "q_unknown": "無料枠が一時的にいっぱいです。{s}秒後に一度だけ送り直してみてください。それでもだめなら、今日の分を使い切ったのかもしれません。",
+      "q_day": "今日の無料枠を使い切りました。{t}からまた話せます。",
+      "q_zero": "このAIモデルは、いま無料で使える量が0に設定されています。管理者に伝えてください。",
+      "q_ready": "もう一度送れるようになりました。",
+      "q_ph_wait": "{s}秒後に送れます",
+      "q_ph_closed": "いまは送信できません",
+      "q_detail": "詳細"
+    }
+  }
+}
