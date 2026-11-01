@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>좋은 질문 파문 페이지 다국어</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  생각의 연결 — 좋은 질문 파문 페이지 (웹 시안, 다국어)
+  버전: v3.3.5 다국어 초안 · 2026-11-01 · 초안 담당 AI 작성
+  기준: 파문시안 v3.3.5 (한국어, 사용자 버전 결정 2026-11-01 17:02). 화면·움직임·소리는 v3.3.5와 같고, 문구를 언어별 카탈로그에서 불러오도록 바꿨다.
+  언어: ko, en, es-419, hi, zh-TW, ja. 카탈로그 원본은 i18n/ripple_v3.3.5/<언어>.json 이며, 이 파일에는 그 내용을 그대로 넣었다(빌드 시 삽입).
+  상태: 한국어 일부 문구만 승인·확정. 다른 언어는 전부 제안이며 언어별로 따로 승인한다. 한 언어의 승인이 다른 언어를 대체하지 않는다.
+  규칙: 콘텐츠 ID·5단계 순서·메타보기 규칙(+3)은 언어와 무관하게 같다. 사용자가 쓴 글은 번역하지 않는다. 응급번호는 언어로 단정하지 않는다(한국어만 119(한국) 표기).
+  AI 미연결: 역질문은 로컬 데모 규칙. 대화는 저장·전송하지 않는다. 소리는 사용자가 켤 때만 재생(브라우저 생성음).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: 위쪽 큰 영역 = 같은 중심의 물결 고리(질문은 고리 한가운데), 아래 = 채팅창. 한 턴에 질문 하나. */
+:root{
+  --void:#02050b;
+  --ink:#e6eefa;
+  --mist:#93a8c3;
+  --ice:#cfe2fb;
+  --coral:#F06D75;         /* 기존 연결 (고정 색) */
+  --teal:#17B8A6;          /* 새 연결 (고정 색) */
+  --glass:rgba(6,13,26,.66);
+  --line:rgba(140,180,232,.2);
+  --display:"Gowun Batang","Nanum Myeongjo","Noto Serif KR",Georgia,serif;
+  --ui:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html:lang(hi){--display:"Noto Serif Devanagari","Nirmala UI",serif;--ui:"Noto Sans Devanagari","Nirmala UI",system-ui,sans-serif}
+html:lang(zh-TW){--display:"Noto Serif TC","Songti TC","PMingLiU",serif;--ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+html:lang(ja){--display:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;--ui:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--ink);font-family:var(--ui);font-size:15px;overflow:hidden;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:anywhere}
+html:lang(zh-TW) body,html:lang(ja) body{word-break:normal;line-break:strict}
+#field{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+.stage{position:relative;z-index:1;height:100%;max-width:560px;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;gap:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 8px;box-sizing:border-box}
+
+/* 상단 */
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
+.brand b{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.01em}
+.brand span{font-size:11px;color:var(--mist);letter-spacing:.14em}
+.right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.lang{appearance:none;-webkit-appearance:none;background:var(--glass) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2393a8c3' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 10px center/9px;
+  color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 26px 6px 12px;font:inherit;font-size:12.5px;cursor:pointer}
+.lang option{background:#0b1424;color:var(--ink)}
+.meta{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.meta small{font-size:11px;color:var(--mist);letter-spacing:.04em;white-space:nowrap}
+.meta output{font-weight:600;font-variant-numeric:tabular-nums;font-size:15px;min-width:2ch;text-align:right}
+.meter{width:46px;height:4px;border-radius:4px;background:rgba(140,180,232,.18);overflow:hidden}
+.meter i{display:block;height:100%;width:50%;background:linear-gradient(90deg,#3d7fd0,var(--teal));transition:width .9s ease}
+
+/* 가운데 */
+.center{min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:16px;padding-block:12px;scrollbar-width:thin}
+/* 내용이 짧으면 가운데, 길면 위에서부터 스크롤 (가운데 정렬로 윗부분이 잘리는 것 방지) */
+.center>:first-child{margin-top:auto}.center>:last-child{margin-bottom:auto}
+.qwrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:30px 20px;border-radius:50%;max-width:340px;
+  background:radial-gradient(closest-side,rgba(2,5,11,.82),rgba(2,5,11,.5) 62%,rgba(2,5,11,0))}
+.eyebrow{margin:0;font-size:11px;letter-spacing:.14em;color:var(--mist)}
+.q{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(24px,6.6vw,33px);line-height:1.4;text-wrap:balance;text-shadow:0 0 22px rgba(2,5,11,.95);transition:opacity .5s ease,filter .5s ease}
+.q.small{font-size:clamp(19px,5.1vw,24px);line-height:1.55}
+html:lang(hi) .q{line-height:1.6}
+.q.dim{opacity:.28;filter:blur(1.5px)}
+.sub{margin:0;max-width:30ch;color:var(--mist);font-size:13.5px;line-height:1.65;text-wrap:pretty}
+.center.in .qwrap{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+.extra{width:100%;max-width:420px;text-align:left;display:flex;flex-direction:column;gap:14px}
+.said{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.said h3,.cands legend{margin:0 0 8px;font-size:11px;letter-spacing:.12em;color:var(--mist);font-weight:500}
+.said ul{margin:0;padding-left:18px;display:grid;gap:6px;line-height:1.55;font-size:14px}
+.cands{margin:0;padding:0;border:0;display:grid;gap:8px}
+.cand{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--glass);cursor:pointer;line-height:1.5;font-family:var(--display);font-size:16px}
+.cand input{margin-top:5px;accent-color:var(--teal)}
+.cand:has(input:checked){border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset}
+.edit{display:grid;gap:6px}
+.edit label{font-size:12px;color:var(--mist)}
+.edit textarea{font-family:var(--display);font-size:17px;line-height:1.5}
+.note{margin:0;font-size:12px;color:var(--mist);line-height:1.6}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.steps li{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--mist);background:var(--glass)}
+.steps li.on{color:var(--void);background:var(--teal);border-color:var(--teal);font-weight:600}
+.acts{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.acts li{padding:7px 13px;border-radius:999px;border:1px solid var(--line);font-size:13px;background:var(--glass)}
+
+.choices{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px}
+.choices:empty{display:none}
+button{font:inherit;color:inherit}
+.choice{background:rgba(9,18,36,.66);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:12px 18px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:border-color .2s,background .2s}
+.choice:hover{border-color:rgba(207,226,251,.55);background:rgba(16,30,56,.75)}
+.choice.primary{background:var(--teal);border-color:var(--teal);color:#021512;font-weight:600}
+
+/* 채팅창 */
+.dock{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.dock form{display:flex;align-items:flex-end;gap:8px}
+textarea{width:100%;box-sizing:border-box;resize:none;background:transparent;border:0;color:var(--ink);font:inherit;font-size:16px;line-height:1.5;padding:9px 0;outline:none;max-height:120px}
+.edit textarea{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.edit textarea:focus{border-color:var(--teal)}
+textarea::placeholder{color:#6f84a0}
+.send{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--ice);color:var(--void);cursor:pointer;display:grid;place-items:center}
+.send:disabled{opacity:.4;cursor:default}
+.send svg{width:18px;height:18px}
+.tools{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.tool{background:none;border:1px solid transparent;color:var(--mist);font-size:12.5px;padding:6px 10px;border-radius:999px;cursor:pointer}
+.tool:hover{color:var(--ink);border-color:var(--line)}
+.tool.sound{border-color:var(--line)}
+.tool.sound[aria-pressed="true"]{color:var(--ink);border-color:rgba(23,184,166,.6)}
+.tool.sound .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px;opacity:.6}
+.tool.sound[aria-pressed="true"] .dot{background:var(--teal);opacity:1;animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.7);opacity:.5}}
+.fine{margin:0;text-align:center;font-size:10.5px;color:#6c809b;line-height:1.6;padding-bottom:2px}
+.fine button{background:none;border:0;color:var(--mist);text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:10.5px;padding:0}
+.legend{display:block}
+.legend i{font-style:normal;padding:0 4px}
+.legend .a{color:var(--teal)}.legend .p{color:var(--coral)}
+
+/* 지난 대화 시트 */
+.sheet{position:fixed;z-index:5;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:72%;box-sizing:border-box;display:flex;flex-direction:column;
+  background:rgba(5,10,20,.94);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sheet h2{margin:0;font-size:13px;letter-spacing:.1em;color:var(--mist);font-weight:500}
+.log{list-style:none;margin:0;padding:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.log li{max-width:86%;padding:10px 14px;border-radius:16px;line-height:1.55;font-size:14px;background:rgba(30,48,78,.7)}
+.log li.me{align-self:flex-end;background:rgba(240,109,117,.16);border:1px solid rgba(240,109,117,.32)}
+.log li.empty{background:none;color:var(--mist);max-width:none}
+.sheet .note{margin-top:12px}
+
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 문구 상태 보기 (검토용) */
+body.tags [data-s="A"]{outline:1px dashed var(--teal);outline-offset:3px}
+body.tags [data-s="P"]{outline:1px dashed var(--coral);outline-offset:3px}
+
+@media (prefers-reduced-motion:reduce){
+  .center.in .qwrap{animation:none}
+  .q,.meter i{transition:none}
+  .tool.sound[aria-pressed="true"] .dot{animation:none}
+}
+</style>
+
+<canvas id="field" aria-hidden="true"></canvas>
+
+<div class="stage">
+  <header class="bar">
+    <div class="brand"><b data-k="appName"></b><span data-k="partLabel"></span></div>
+    <div class="right">
+      <label class="sr" for="lang" data-k="langLabel"></label>
+      <select class="lang" id="lang"></select>
+      <div class="meta" role="img" id="meta">
+        <small data-k="metaLabel"></small>
+        <output id="metaNum">50</output>
+        <span class="meter" id="meter"><i id="metaFill"></i></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="center in" id="center" aria-live="polite">
+    <div class="qwrap">
+      <p class="eyebrow" id="eyebrow"></p>
+      <h1 class="q" id="q"></h1>
+      <p class="sub" id="sub" hidden></p>
+    </div>
+    <div class="extra" id="extra" hidden></div>
+    <div class="choices" id="choices"></div>
+  </main>
+
+  <section class="dock" id="dock">
+    <form id="form" autocomplete="off">
+      <label class="sr" for="msg" data-k="msgLabel"></label>
+      <textarea id="msg" rows="1"></textarea>
+      <button class="send" id="send" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <div>
+    <nav class="tools" id="tools">
+      <button class="tool sound" id="soundBtn" type="button" aria-pressed="false"><span class="dot"></span><span id="soundLabel"></span></button>
+      <button class="tool" id="wrap" type="button" data-k="wrap" hidden></button>
+      <button class="tool" id="stop" type="button" data-k="stop" hidden></button>
+      <button class="tool" id="logBtn" type="button" data-k="log"></button>
+    </nav>
+    <p class="fine">v3.3.5 · <span data-k="fine"></span> · <button id="tagBtn" type="button" aria-pressed="false" data-k="tagBtn"></button>
+      <span class="legend" id="legend" hidden><i class="a" data-k="legendA"></i><i class="p" data-k="legendP"></i></span>
+    </p>
+  </div>
+</div>
+
+<aside class="sheet" id="sheet" hidden>
+  <header><h2 data-k="logTitle"></h2><button class="tool" id="closeSheet" type="button" data-k="close"></button></header>
+  <ul class="log" id="log"></ul>
+  <p class="note" id="safety"></p>
+</aside>
+
+<script>
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a),TAU=Math.PI*2;
+
+/* ───────── 물결 고리 장 (v3.3.5와 같음) ───────── */
+const field=(()=>{
+  const cv=$('field'),ctx=cv.getContext('2d');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const BLUE=[58,124,204],ICE=[186,220,255],COR=[240,109,117],TEAL=[23,184,166],PULSE=[120,178,246];
+  const K_H=[2,3,5,7],N=96,SP=.17,V=.04;
+  const STR={off:[-2.4,-.9,.5,1.9],al:[.22,.95,.55,.18],w:[.6,1.5,.9,.5],mix:[.05,.55,.28,.1]};
+  let W=0,H=0,cx=0,cy=0,tx=0,ty=0,Rm=200,RmT=200,T=0,last=0,speed=1,speedT=1,acc=0,teal=false,timer=null,count=0;
+  let rings=[],motes=[];
+  function ring(r,o={}){
+    return{r,x:o.x??null,y:o.y??null,v:o.v||V,col:o.col||null,str:o.str||1,life:o.life||0,t0:T,ev:!!o.ev,
+      ph:K_H.map(()=>rnd(0,TAU)),am:[rnd(.012,.024),rnd(.007,.015),rnd(.003,.008),rnd(.002,.005)],
+      w:K_H.map(()=>rnd(-.35,.35)),gaps:[rnd(0,TAU),Math.random()<.65?rnd(0,TAU):null],gw:rnd(.07,.17),sh:rnd(0,TAU)};
+  }
+  function mote(fresh){
+    return{r:fresh?rnd(.02,.12):rnd(.03,1.2),a:rnd(0,TAU),span:rnd(.04,.22),rot:rnd(-.05,.05),b:rnd(.25,.75),
+      w:Math.random()<.05?rnd(1.6,2.6):rnd(.4,1.1),tint:Math.random()<.015?COR:null,life:fresh?0:1};
+  }
+  function layout(){
+    const c=$('center').getBoundingClientRect();
+    tx=c.left+c.width/2;ty=c.top+c.height/2;
+    RmT=Math.max(140,Math.min(W*.5,c.height*.6,460));
+    if(!cx||reduce){cx=tx;cy=ty;Rm=RmT}
+    if(reduce)draw(0);
+  }
+  function resize(){
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const n=Math.round(Math.min(420,Math.max(180,W*H/1500)));
+    while(motes.length<n)motes.push(mote(false));motes.length=n;
+    layout();
+  }
+  for(let r=.03;r<1.25;r+=SP)rings.push(ring(r));
+  const PRE={
+    user:{col:COR,v:.5,str:1.25,life:2.8},
+    answer:{col:ICE,v:.42,str:1,life:3},
+    pulse:{col:PULSE,v:.38,str:.75,life:3},
+    confirm:{col:TEAL,v:.32,str:1.7,life:4},
+    tap:{col:ICE,v:.3,str:.85,life:3}
+  };
+  function emit(kind,x,y){
+    if(reduce)return;const p=PRE[kind];if(!p)return;
+    const add=()=>rings.push(ring(.02,{...p,ev:true,x:x??null,y:y??null}));
+    if(kind==='confirm'){add();setTimeout(add,320);setTimeout(add,660)}else add();
+  }
+  function setMode(m){
+    clearInterval(timer);timer=null;
+    if(m==='think'){speedT=2.3;emit('pulse');timer=setInterval(()=>emit('pulse'),1000)}
+    else if(m==='rest')speedT=.4;else speedT=1;
+  }
+  function newLinks(){
+    teal=true;
+    motes.forEach(m=>{if(Math.random()<.08){m.tint=TEAL;m.b=Math.max(m.b,.7)}});
+    if(reduce)draw(0);
+  }
+  const paths=Array.from({length:8},()=>null);
+  function drawRing(g,ox,oy,water){
+    const base=g.r*Rm;
+    let env=Math.min(1,g.r/.07)*Math.max(0,Math.min(1,(1.25-g.r)/.42));
+    if(g.ev)env*=Math.max(0,1-(T-g.t0)/g.life);
+    env*=g.str;if(env<.02)return;
+    const rad=new Float32Array(N+1),lit=new Float32Array(N+1);
+    const sc=(.55+g.r*.9);
+    for(let i=0;i<=N;i++){
+      const th=i/N*TAU;let d=0;
+      for(let k=0;k<4;k++)d+=g.am[k]*sc*Math.sin(K_H[k]*th+g.ph[k]+g.w[k]*T);
+      rad[i]=base*(1+d)+water*Math.sin(th*2+T*.4+g.r*3);
+      let L=.32+.68*Math.pow(.5+.5*Math.sin(2*th+g.sh+T*.06),1.4);
+      for(const ga of g.gaps){if(ga==null)continue;let dd=Math.abs(((th-ga+Math.PI)%TAU+TAU)%TAU-Math.PI);if(dd<g.gw)L*=Math.pow(dd/g.gw,3)}
+      lit[i]=L;
+    }
+    const tint=g.col;
+    for(let j=0;j<4;j++){
+      const off=STR.off[j]*(.6+g.r),aw=STR.al[j]*env;
+      let r=BLUE[0]+(ICE[0]-BLUE[0])*STR.mix[j],gg=BLUE[1]+(ICE[1]-BLUE[1])*STR.mix[j],b=BLUE[2]+(ICE[2]-BLUE[2])*STR.mix[j];
+      if(tint){const m=g.ev?.85:.55;r=r*(1-m)+tint[0]*m;gg=gg*(1-m)+tint[1]*m;b=b*(1-m)+tint[2]*m}
+      for(let q=0;q<8;q++)paths[q]=null;
+      for(let i=0;i<N;i++){
+        const a=aw*(lit[i]+lit[i+1])/2;if(a<.03)continue;
+        const q=Math.min(7,Math.floor(a*8));
+        const p=paths[q]||(paths[q]=new Path2D());
+        const t0=i/N*TAU,t1=(i+1)/N*TAU,r0=rad[i]+off,r1=rad[i+1]+off;
+        p.moveTo(ox+Math.cos(t0)*r0,oy+Math.sin(t0)*r0);p.lineTo(ox+Math.cos(t1)*r1,oy+Math.sin(t1)*r1);
+      }
+      ctx.strokeStyle=`rgb(${r|0},${gg|0},${b|0})`;ctx.lineWidth=STR.w[j]*(g.ev?1.5:1)*(.75+g.r*.5);
+      for(let q=0;q<8;q++){if(!paths[q])continue;ctx.globalAlpha=Math.min(1,(q+.5)/8);ctx.stroke(paths[q])}
+    }
+    ctx.globalAlpha=1;
+  }
+  function draw(dt){
+    ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+    ctx.fillStyle='#02050b';ctx.fillRect(0,0,W,H);
+    const sx=cx+Math.sin(T*.21)*3,sy=cy+Math.cos(T*.17)*3;
+    const gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rm*.7);
+    gl.addColorStop(0,'rgba(40,90,165,.20)');gl.addColorStop(.6,'rgba(14,34,70,.07)');gl.addColorStop(1,'rgba(2,5,11,0)');
+    ctx.fillStyle=gl;ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+    const water=Rm*.006*(1+.5*Math.sin(T*.33));
+    if(!reduce){
+      for(const g of rings)g.r+=g.v*dt*(g.ev?1:speed);
+      acc+=V*dt*speed;
+      while(acc>=SP){acc-=SP;count++;rings.push(ring(.0,teal&&count%3===0?{col:TEAL,str:.85}:{}))}
+      rings=rings.filter(g=>g.r<1.3&&(!g.ev||T-g.t0<g.life));
+    }
+    for(const g of rings)drawRing(g,g.x??sx,g.y??sy,water);
+    const fronts=[];for(const g of rings)if(g.ev){const amp=g.str*Math.max(0,1-(T-g.t0)/g.life);if(amp>.02)fronts.push({x:g.x??sx,y:g.y??sy,f:g.r*Rm,amp,col:g.col})}
+    for(const m of motes){
+      if(!reduce){m.r+=V*dt*speed*(.9+m.r*.4);m.a+=m.rot*dt*speed;if(m.life<1)m.life=Math.min(1,m.life+dt*.7);if(m.r>1.3){const t=m.tint;Object.assign(m,mote(true));m.tint=t}}
+      const rr=m.r*Rm,am=m.a+m.span/2;
+      let gain=0;
+      if(fronts.length){const mx=sx+Math.cos(am)*rr,my=sy+Math.sin(am)*rr;for(const f of fronts){const q=(Math.hypot(mx-f.x,my-f.y)-f.f)/26;if(q>-3&&q<3)gain+=Math.exp(-q*q)*f.amp}}
+      const al=Math.min(1,m.b*.55*Math.min(1,m.r/.1)*Math.max(0,Math.min(1,(1.3-m.r)/.35))*m.life+gain*.5);
+      if(al<.02)continue;
+      const c=m.tint||ICE;
+      ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},${al.toFixed(3)})`;ctx.lineWidth=m.w*(1+gain*.5);
+      ctx.beginPath();ctx.arc(sx,sy,rr+gain*8,m.a,m.a+Math.min(.9,m.span*(1.2-m.r*.4)));ctx.stroke();
+    }
+  }
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
+    speed+=(speedT-speed)*Math.min(1,dt*1.5);
+    cx+=(tx-cx)*Math.min(1,dt*2);cy+=(ty-cy)*Math.min(1,dt*2);Rm+=(RmT-Rm)*Math.min(1,dt*2);
+    draw(dt);requestAnimationFrame(frame);
+  }
+  addEventListener('resize',resize);
+  if('ResizeObserver' in window)new ResizeObserver(layout).observe($('center'));
+  resize();
+  if(reduce){T=8;draw(0)}else requestAnimationFrame(t=>{last=t;frame(t)});
+  return{emit,setMode,newLinks,reduce,layout};
+})();
+
+/* ───────── 잔잔한 소리 (v3.3.5와 같음, 언어와 무관) ───────── */
+const sound=(()=>{
+  const PENTA=[146.83,185.0,220.0,246.94,293.66,329.63,369.99,440.0];
+  let ac=null,master=null,echo=null,timers=[],on=false;
+  function later(fn,ms){timers.push(setTimeout(fn,ms))}
+  function brown(sec){
+    const n=Math.floor(ac.sampleRate*sec),buf=ac.createBuffer(2,n,ac.sampleRate);
+    for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);let l=0;for(let i=0;i<n;i++){l=(l+.02*(Math.random()*2-1))/1.02;d[i]=l*3.2}}
+    return buf;
+  }
+  function bed(pan){
+    const src=ac.createBufferSource();src.buffer=brown(rnd(11,17));src.loop=true;
+    const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=500;f.Q.value=.3;
+    const g=ac.createGain();g.gain.value=.08;
+    const p=ac.createStereoPanner?ac.createStereoPanner():null;
+    src.connect(f).connect(g);if(p){p.pan.value=pan;g.connect(p).connect(master)}else g.connect(master);
+    src.start();
+    (function wave(){
+      if(!ac)return;
+      if(document.hidden){later(wave,1500);return}
+      const now=ac.currentTime,up=rnd(2.4,5.2),down=rnd(3.4,7.5),peak=rnd(.12,.28),low=rnd(.04,.09),fc=rnd(380,950);
+      g.gain.cancelScheduledValues(now);g.gain.setValueAtTime(g.gain.value,now);
+      g.gain.linearRampToValueAtTime(peak,now+up);g.gain.linearRampToValueAtTime(low,now+up+down);
+      f.frequency.cancelScheduledValues(now);f.frequency.setValueAtTime(f.frequency.value,now);
+      f.frequency.linearRampToValueAtTime(fc,now+up);f.frequency.linearRampToValueAtTime(fc*.55,now+up+down);
+      later(wave,(up+down-rnd(0,1.6))*1000);
+    })();
+  }
+  function tone(){
+    if(!ac)return;
+    if(document.hidden){later(tone,1500);return}
+    const now=ac.currentTime,fr=PENTA[Math.floor(Math.random()*PENTA.length)]*(Math.random()<.2?.5:1);
+    const att=rnd(1.8,3.6),hold=rnd(.4,2),rel=rnd(5,9),pk=rnd(.022,.045),end=now+att+hold+rel+.1;
+    const o1=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),g2=ac.createGain(),lp=ac.createBiquadFilter();
+    o1.type='sine';o1.frequency.value=fr;o2.type='triangle';o2.frequency.value=fr*1.003;g2.gain.value=.3;
+    lp.type='lowpass';lp.frequency.value=1500;
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(pk,now+att);g.gain.setValueAtTime(pk,now+att+hold);g.gain.exponentialRampToValueAtTime(.0001,now+att+hold+rel);
+    o1.connect(g);o2.connect(g2).connect(g);g.connect(lp);lp.connect(master);lp.connect(echo);
+    o1.start(now);o2.start(now);o1.stop(end);o2.stop(end);
+    later(tone,rnd(2.8,8.5)*1000);
+  }
+  function start(){
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    master=ac.createGain();master.gain.value=0;
+    const comp=ac.createDynamicsCompressor();master.connect(comp).connect(ac.destination);
+    echo=ac.createDelay(2);echo.delayTime.value=.53;
+    const fb=ac.createGain();fb.gain.value=.36;const elp=ac.createBiquadFilter();elp.type='lowpass';elp.frequency.value=1300;
+    const wet=ac.createGain();wet.gain.value=.5;
+    echo.connect(elp).connect(fb).connect(echo);elp.connect(wet).connect(master);
+    bed(-.4);bed(.4);later(tone,1200);
+    master.gain.setTargetAtTime(.55,ac.currentTime,1.6);
+    on=true;
+  }
+  function stop(){
+    if(!ac)return;const a=ac,m=master;
+    timers.forEach(clearTimeout);timers=[];ac=null;on=false;
+    m.gain.setTargetAtTime(0,a.currentTime,.4);setTimeout(()=>a.close().catch(()=>{}),1800);
+  }
+  document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume()});
+  addEventListener('pagehide',stop);
+  return{toggle(){if(on){stop();return false}try{start();return true}catch(e){return false}},isOn:()=>on};
+})();
+
+/* ───────── 언어 카탈로그 ─────────
+   원본: i18n/ripple_v3.3.5/<언어>.json (같은 키, 값만 언어별). 빌드 때 아래에 그대로 들어간다. */
+const CATALOGS={"ko":{"lang":"ko","locale":"ko-KR","version":"3.3.5","draft":"파문시안 v3.3.5 한국어 카탈로그. 새 문구 없음, v3.3.5 화면 문구를 키로 옮긴 것.","approved":["ask","start","cNone","eyebrow1","metaLabel","steps"],"undecidedTerms":[],"strings":{"appName":"생각의 연결","partLabel":"좋은 질문","langLabel":"언어","metaLabel":"메타보기","metaAria":"메타보기 {n}, 표시 범위 100","metaTitle":"100은 표시 범위예요. 만점이 아니에요.","eyebrow1":"1단계 · 좋은 질문","eyebrowDone":"1단계 · 좋은 질문 · 확정","ask":"지금 고민이 뭐야?","askPh":"편하게 적어 줘. 한 줄이어도 괜찮아.","replyPh":"이어서 적어 줘.","msgLabel":"메시지","send":"보내기","start":"답부터 찾기 전에, 이 생각이 어디서 왔는지 조금 얘기해 볼까?","startYes":"응, 얘기해 볼래","startNow":"바로 답부터 듣고 싶어","nowNote":"이 시안에는 AI가 연결돼 있지 않아서 답을 보여 줄 수 없어. 실제 앱에서는 여기서 바로 답을 들을 수 있어.","demoNote":"데모 질문이야. 실제로는 네 답에 맞춰 다음 질문이 바뀌어.","follow":["어떤 순간에 특히 그렇게 느껴?","그때 가장 신경 쓰이는 건 뭐야?","그 순간 네가 중요하게 여기는 건 뭘까?","비슷한 상황이 이전에도 있었던 것 같아?"],"fEnd":"여기까지 나온 얘기, 한번 정리해 볼까? 더 적고 싶으면 계속 적어도 돼.","wrapGo":"정리해 볼래","sumTitle":"이 중에 마음에 걸리는 질문이 있어?","sumSaid":"네가 한 말","candLegend":"질문 후보","cand1":"그 순간 네가 가장 지키고 싶었던 건 뭐였을까?","cand2":"다른 사람의 평가가 지금 너에게 얼마나 중요한 걸까?","candOwn":"직접 쓸래","candEdit":"고쳐 써도 돼. 네 말로 바꾸면 더 좋아.","candNote":"후보는 예시야. 원인을 정해 주는 게 아니야.","candGo":"이 질문으로 할래","keepTalking":"조금 더 얘기할래","confirmQ":"지금 이 질문이 너의 마음에 와닿아? 아니면 다른 질문이 생각나?","cYes":"와닿아, 이걸로 할래","cOther":"다른 질문이 생각나","cUnsure":"아직 모르겠어","cNone":"아직 마음에 와닿는 질문이 없어","done":"메타보기 +3. 새 연결이 하나 생겼어.","doneNext":"이 질문으로 5단계 맵을 시작해.","steps":["좋은 질문","기존 신호","신호 전환","습관 개조","원하는 삶 = 자유"],"stepsAria":"5단계","rest":"생각이 잘 안 풀리는 날도 있지. 꼭 여기서 답을 찾지 않아도 돼. 잠깐 다른 걸 하다 보면 생각의 흐름이 조금 정리될 수도 있어.","restActsNote":"이런 활동들은 생각의 흐름을 정리하는 데 도움이 될 수 있어.","acts":["일기","산책","조깅","자전거","명상","여행"],"restNothing":"아무것도 안 해도 괜찮아.","restBack":"다시 얘기해 볼래","restEnd":"오늘은 여기까지","unsure":"괜찮아. 확정하지 않고 여기서 멈춰도 돼.","backToQ":"질문 다시 보기","stopped":"멈췄어. 언제든 다시 시작할 수 있어.","restart":"처음부터","wrap":"여기서 정리","stop":"멈추기","log":"지난 대화","logTitle":"지난 대화","logEmpty":"아직 나눈 대화가 없어요.","close":"닫기","soundOn":"잔잔한 소리 켜기","soundOff":"소리 끄기","safety":"이 시안은 의료·상담 서비스가 아니에요. 위급하면 119(한국) 또는 지금 있는 나라의 응급번호로 연락하세요.","fine":"AI 미연결(데모 질문) · 대화는 저장·전송되지 않아요 · 소리는 켤 때만, 이 화면에서 만든 소리","tagBtn":"문구 상태 보기","legendA":"청록 점선 = 승인·확정 문구","legendP":"코랄 점선 = 제안 문구","qOpen":"“","qClose":"”"}},"en":{"lang":"en","locale":"en","version":"3.3.5","draft":"Proposal draft. Rewritten in everyday English, not a word-for-word translation of the Korean. App name and the five step names come from i18n/en.json 3.3.4-en. Nothing in this file is approved yet.","approved":[],"undecidedTerms":["metaLabel"],"strings":{"appName":"Thought Connection","partLabel":"Good Question","langLabel":"Language","metaLabel":"Meta-view","metaAria":"Meta-view {n}, display range 100","metaTitle":"100 is just the display range, not a top score.","eyebrow1":"Step 1 · Good Question","eyebrowDone":"Step 1 · Good Question · Confirmed","ask":"What's on your mind right now?","askPh":"Write it however it comes. One line is fine.","replyPh":"Keep going…","msgLabel":"Message","send":"Send","start":"Before we jump to answers, want to talk a little about where this thought came from?","startYes":"Sure, let's talk","startNow":"I'd rather hear an answer first","nowNote":"This prototype isn't connected to an AI, so it can't give you an answer. In the real app, you could get one right here.","demoNote":"This is a demo question. In the real app, the next question follows what you say.","follow":["When do you feel that the most?","In that moment, what bothers you most?","What matters most to you in that moment?","Has something like this happened before?"],"fEnd":"Want to pull together what we've talked about? You can keep writing if you like.","wrapGo":"Let's pull it together","sumTitle":"Does any of these questions stick with you?","sumSaid":"What you said","candLegend":"Possible questions","cand1":"What were you trying hardest to protect in that moment?","cand2":"How much does other people's opinion of you matter right now?","candOwn":"I'll write my own","candEdit":"Feel free to rewrite it. It's better in your own words.","candNote":"These are just examples. They don't tell you the cause.","candGo":"Go with this question","keepTalking":"I want to talk a bit more","confirmQ":"Does this question really speak to you right now? Or is a different one coming to mind?","cYes":"Yes, this one","cOther":"A different one's coming to mind","cUnsure":"I'm not sure yet","cNone":"No question really speaks to me yet","done":"Meta-view +3. A new connection just formed.","doneNext":"Start your five-step map with this question.","steps":["Good Question","Existing Signal","Signal Shift","Habit Remodel","Life You Want = Freedom"],"stepsAria":"Five steps","rest":"Some days your thoughts just won't untangle. You don't have to find the answer here. Doing something else for a while might help them settle.","restActsNote":"Things like these can help your thoughts find their flow.","acts":["Journaling","A walk","A jog","A bike ride","Meditation","A trip"],"restNothing":"Doing nothing is fine too.","restBack":"Let's talk again","restEnd":"That's enough for today","unsure":"That's okay. You can stop here without deciding.","backToQ":"See the question again","stopped":"Paused. You can pick it up anytime.","restart":"Start over","wrap":"Pull it together","stop":"Pause","log":"Earlier","logTitle":"Earlier in this talk","logEmpty":"Nothing here yet.","close":"Close","soundOn":"Turn on calm sound","soundOff":"Turn off sound","safety":"This prototype isn't a medical or counselling service. If you're in danger or need help urgently, call your local emergency number.","fine":"No AI connected (demo questions) · Nothing is saved or sent · Sound plays only if you turn it on, and is made on this screen","tagBtn":"Show copy status","legendA":"Teal dashes = approved copy (Korean only so far)","legendP":"Coral dashes = proposed copy","qOpen":"“","qClose":"”"}},"es-419":{"lang":"es-419","locale":"es-419","version":"3.3.5","draft":"Borrador de propuesta. Español latinoamericano neutro, trato de tú. Reescrito en español cotidiano, no traducción literal del coreano. Nada aprobado todavía. Requiere revisión de hablante nativo.","approved":[],"undecidedTerms":["appName","metaLabel"],"strings":{"appName":"Conexión de pensamientos","partLabel":"Buena pregunta","langLabel":"Idioma","metaLabel":"Metamirada","metaAria":"Metamirada {n}, rango visible 100","metaTitle":"100 es solo el rango visible, no un puntaje máximo.","eyebrow1":"Paso 1 · Buena pregunta","eyebrowDone":"Paso 1 · Buena pregunta · Confirmada","ask":"¿Qué te preocupa ahora?","askPh":"Escríbelo como te salga. Con una línea basta.","replyPh":"Sigue contándome…","msgLabel":"Mensaje","send":"Enviar","start":"Antes de buscar respuestas, ¿hablamos un poco de dónde viene este pensamiento?","startYes":"Sí, hablemos","startNow":"Prefiero escuchar una respuesta primero","nowNote":"Esta maqueta no está conectada a una IA, así que no puede darte una respuesta. En la app real, podrías recibirla aquí mismo.","demoNote":"Es una pregunta de demostración. En la app real, la siguiente pregunta depende de lo que respondas.","follow":["¿En qué momentos lo sientes más?","En ese momento, ¿qué es lo que más te inquieta?","En ese momento, ¿qué es lo que más te importa?","¿Te ha pasado algo parecido antes?"],"fEnd":"¿Ordenamos un poco lo que hemos hablado? Si quieres seguir escribiendo, adelante.","wrapGo":"Ordenémoslo","sumTitle":"¿Alguna de estas preguntas te dice algo?","sumSaid":"Lo que dijiste","candLegend":"Preguntas posibles","cand1":"¿Qué era lo que más querías proteger en ese momento?","cand2":"¿Qué tanto te importa ahora lo que piensen los demás de ti?","candOwn":"Prefiero escribir la mía","candEdit":"Puedes reescribirla. Con tus propias palabras queda mejor.","candNote":"Son solo ejemplos. No te están diciendo la causa.","candGo":"Me quedo con esta pregunta","keepTalking":"Quiero hablar un poco más","confirmQ":"¿Esta pregunta te llega de verdad ahora? ¿O se te ocurre otra?","cYes":"Sí, me quedo con esta","cOther":"Se me ocurre otra","cUnsure":"Todavía no sé","cNone":"Todavía ninguna pregunta me llega","done":"Metamirada +3. Se formó una nueva conexión.","doneNext":"Empieza tu mapa de cinco pasos con esta pregunta.","steps":["Buena pregunta","Señal de siempre","Cambio de señal","Remodelar hábitos","La vida que quieres = libertad"],"stepsAria":"Cinco pasos","rest":"Hay días en que los pensamientos no se desenredan. No tienes que encontrar la respuesta aquí. A veces, hacer otra cosa un rato ayuda a que las ideas se acomoden.","restActsNote":"Cosas como estas pueden ayudar a que tus pensamientos fluyan.","acts":["Escribir un diario","Caminar","Trotar","Andar en bici","Meditar","Viajar"],"restNothing":"No hacer nada también está bien.","restBack":"Volvamos a hablar","restEnd":"Por hoy, suficiente","unsure":"Está bien. Puedes parar aquí sin decidir nada.","backToQ":"Ver la pregunta otra vez","stopped":"En pausa. Puedes retomarlo cuando quieras.","restart":"Empezar de nuevo","wrap":"Ordenar aquí","stop":"Pausar","log":"Lo hablado","logTitle":"Lo que hemos hablado","logEmpty":"Todavía no hay nada aquí.","close":"Cerrar","soundOn":"Activar sonido tranquilo","soundOff":"Apagar sonido","safety":"Esta maqueta no es un servicio médico ni de orientación psicológica. Si estás en peligro o necesitas ayuda urgente, llama al número de emergencias del país donde estés.","fine":"Sin IA conectada (preguntas de demostración) · No se guarda ni se envía nada · El sonido solo suena si lo activas y se genera en esta pantalla","tagBtn":"Ver estado de los textos","legendA":"Línea verde azulada = texto aprobado (por ahora, solo coreano)","legendP":"Línea coral = texto propuesto","qOpen":"“","qClose":"”"}},"hi":{"lang":"hi","locale":"hi-IN","version":"3.3.5","draft":"प्रस्ताव मसौदा। 'तुम' वाली दोस्ताना बोली, कोरियाई का शब्दशः अनुवाद नहीं। जहाँ हो सका, लिंग-तटस्थ वाक्य रखे गए हैं। अभी कुछ भी मंज़ूर नहीं। मूल हिंदी भाषी की समीक्षा ज़रूरी।","approved":[],"undecidedTerms":["appName","metaLabel"],"strings":{"appName":"विचारों का जुड़ाव","partLabel":"अच्छा सवाल","langLabel":"भाषा","metaLabel":"मेटा-नज़र","metaAria":"मेटा-नज़र {n}, दिखाने की सीमा 100","metaTitle":"100 सिर्फ़ दिखाने की सीमा है, पूरे अंक नहीं।","eyebrow1":"चरण 1 · अच्छा सवाल","eyebrowDone":"चरण 1 · अच्छा सवाल · पक्का","ask":"अभी तुम्हारे मन में क्या उलझन है?","askPh":"जैसे मन में आए, वैसे लिखो। एक लाइन भी काफ़ी है।","replyPh":"आगे लिखते रहो…","msgLabel":"संदेश","send":"भेजो","start":"जवाब ढूँढने से पहले, क्या थोड़ी बात करें कि यह ख़याल कहाँ से आया?","startYes":"हाँ, बात करते हैं","startNow":"पहले जवाब सुनना है","nowNote":"यह नमूना किसी AI से जुड़ा नहीं है, इसलिए जवाब नहीं दिखा सकता। असली ऐप में यहीं जवाब मिल सकता है।","demoNote":"यह डेमो सवाल है। असली ऐप में अगला सवाल तुम्हारे जवाब के हिसाब से बदलेगा।","follow":["किन पलों में ऐसा सबसे ज़्यादा लगता है?","उस वक़्त सबसे ज़्यादा क्या खटकता है?","उस पल में तुम्हारे लिए सबसे ज़रूरी क्या होता है?","क्या पहले भी कभी ऐसा कुछ हुआ था?"],"fEnd":"अब तक जो बात हुई, उसे एक बार समेट लें? और लिखना हो तो लिखते रहो।","wrapGo":"चलो, समेटते हैं","sumTitle":"इनमें से कोई सवाल मन को छूता है?","sumSaid":"तुमने जो कहा","candLegend":"सवाल के कुछ विकल्प","cand1":"उस पल में तुम्हारे लिए सबसे ज़्यादा बचाने लायक क्या था?","cand2":"दूसरों की राय अभी तुम्हारे लिए कितनी मायने रखती है?","candOwn":"ख़ुद लिखना है","candEdit":"चाहो तो इसे बदलकर लिखो। अपने शब्दों में हो तो और अच्छा।","candNote":"ये सिर्फ़ उदाहरण हैं। ये वजह तय नहीं करते।","candGo":"यही सवाल लेते हैं","keepTalking":"थोड़ी और बात करनी है","confirmQ":"क्या यह सवाल अभी सच में मन को छूता है? या कोई और सवाल सूझ रहा है?","cYes":"हाँ, यही सही है","cOther":"कोई और सवाल सूझ रहा है","cUnsure":"अभी पता नहीं","cNone":"अभी कोई सवाल मन को नहीं छू रहा","done":"मेटा-नज़र +3। एक नया जुड़ाव बना।","doneNext":"इस सवाल से अपना पाँच चरणों वाला नक़्शा शुरू करो।","steps":["अच्छा सवाल","पुराना संकेत","संकेत बदलना","आदतों का नया रूप","मनचाही ज़िंदगी = आज़ादी"],"stepsAria":"पाँच चरण","rest":"कुछ दिन ऐसे होते हैं जब ख़याल सुलझते ही नहीं। ज़रूरी नहीं कि जवाब यहीं मिले। थोड़ी देर कुछ और करने से ख़यालों का बहाव थोड़ा ठहर सकता है।","restActsNote":"ऐसे काम ख़यालों को सुलझाने में मदद कर सकते हैं।","acts":["डायरी लिखना","टहलना","जॉगिंग","साइकिल चलाना","ध्यान","सफ़र"],"restNothing":"कुछ न करना भी ठीक है।","restBack":"फिर से बात करते हैं","restEnd":"आज के लिए इतना काफ़ी","unsure":"कोई बात नहीं। बिना कुछ तय किए यहीं रुकना भी ठीक है।","backToQ":"सवाल फिर से देखो","stopped":"बातचीत रुकी है। जब मन हो, फिर से शुरू करना।","restart":"शुरू से","wrap":"यहीं समेटो","stop":"रोको","log":"पिछली बातें","logTitle":"पिछली बातचीत","logEmpty":"अभी यहाँ कुछ नहीं है।","close":"बंद करो","soundOn":"शांत आवाज़ चालू करो","soundOff":"आवाज़ बंद करो","safety":"यह नमूना कोई मेडिकल या काउंसलिंग सेवा नहीं है। अगर ख़तरा हो या तुरंत मदद चाहिए, तो जिस देश में हो वहाँ के आपातकालीन नंबर पर कॉल करो।","fine":"AI जुड़ा नहीं है (डेमो सवाल) · कुछ भी सेव या भेजा नहीं जाता · आवाज़ सिर्फ़ चालू करने पर, इसी स्क्रीन पर बनती है","tagBtn":"टेक्स्ट की स्थिति देखो","legendA":"हरी-नीली डैश = मंज़ूर टेक्स्ट (अभी सिर्फ़ कोरियाई)","legendP":"कोरल डैश = प्रस्तावित टेक्स्ट","qOpen":"“","qClose":"”"}},"zh-TW":{"lang":"zh-TW","locale":"zh-TW","version":"3.3.5","draft":"提案草稿。台灣繁體中文，用「你」的口語語氣，不是韓文的逐字翻譯。目前沒有任何文案獲得核可，需母語者審閱。","approved":[],"undecidedTerms":["appName","metaLabel"],"strings":{"appName":"想法的連結","partLabel":"好問題","langLabel":"語言","metaLabel":"後設視角","metaAria":"後設視角 {n}，顯示範圍 100","metaTitle":"100 只是顯示範圍，不是滿分。","eyebrow1":"第 1 步・好問題","eyebrowDone":"第 1 步・好問題・確定","ask":"現在在煩惱什麼？","askPh":"想到什麼就寫什麼，一句話也可以。","replyPh":"繼續說說看……","msgLabel":"訊息","send":"送出","start":"先別急著找答案，要不要聊聊這個想法是從哪裡來的？","startYes":"好，聊聊看","startNow":"我想先聽答案","nowNote":"這個試作版沒有連上 AI，所以給不出答案。正式的 App 裡，可以在這裡直接聽到答案。","demoNote":"這是示範用的問題。正式版裡，下一個問題會隨著你的回答改變。","follow":["什麼時候特別會有這種感覺？","那時候你最在意的是什麼？","在那個當下，你最看重的是什麼？","以前也有過類似的情況嗎？"],"fEnd":"要不要把目前聊到的整理一下？想繼續寫也可以。","wrapGo":"來整理一下","sumTitle":"這裡面有沒有讓你放不下的問題？","sumSaid":"你說過的話","candLegend":"候選問題","cand1":"在那個當下，你最想守住的是什麼？","cand2":"別人的評價，現在對你來說有多重要？","candOwn":"我自己寫","candEdit":"可以改寫。用你自己的話會更好。","candNote":"候選只是例子，不是在替你判定原因。","candGo":"就用這個問題","keepTalking":"我想再多聊一點","confirmQ":"這個問題現在真的觸動你嗎？還是想到別的問題了？","cYes":"有，就是這個","cOther":"想到別的問題了","cUnsure":"還不確定","cNone":"還沒有觸動我的問題","done":"後設視角 +3。多了一條新的連結。","doneNext":"用這個問題開始你的五步驟地圖。","steps":["好問題","既有訊號","訊號轉換","習慣改造","想要的人生＝自由"],"stepsAria":"五個步驟","rest":"總有些日子，思緒怎麼都理不清。不一定要在這裡找到答案。先去做點別的，思緒說不定會慢慢沉澱下來。","restActsNote":"這些活動可能有助於整理思緒。","acts":["寫日記","散步","慢跑","騎腳踏車","冥想","旅行"],"restNothing":"什麼都不做也沒關係。","restBack":"再聊聊看","restEnd":"今天就到這裡","unsure":"沒關係，不用決定，可以先停在這裡。","backToQ":"再看一次問題","stopped":"先暫停了。隨時都可以再開始。","restart":"重新開始","wrap":"在這裡整理","stop":"暫停","log":"先前的對話","logTitle":"先前的對話","logEmpty":"這裡還沒有對話。","close":"關閉","soundOn":"打開輕柔的聲音","soundOff":"關掉聲音","safety":"這個試作版不是醫療或諮商服務。如果你有危險或需要緊急協助，請撥打你所在國家或地區的緊急電話。","fine":"未連接 AI（示範問題）・對話不會儲存或傳送・聲音只在你打開時播放，由這個畫面即時產生","tagBtn":"查看文案狀態","legendA":"藍綠虛線＝已核可文案（目前僅韓文）","legendP":"珊瑚色虛線＝提案文案","qOpen":"「","qClose":"」"}},"ja":{"lang":"ja","locale":"ja-JP","version":"3.3.5","draft":"提案ドラフト。友だちに話すようなくだけた口調で、韓国語の直訳ではなく日本語の日常の言い方に書き直した。安全に関する文だけは丁寧語。承認済みの文言はまだない。ネイティブによる確認が必要。","approved":[],"undecidedTerms":["appName","metaLabel"],"strings":{"appName":"思考のつながり","partLabel":"いい問い","langLabel":"言語","metaLabel":"メタ視点","metaAria":"メタ視点 {n}、表示範囲 100","metaTitle":"100は表示の範囲で、満点ではありません。","eyebrow1":"ステップ1・いい問い","eyebrowDone":"ステップ1・いい問い・決定","ask":"いま、何に悩んでる？","askPh":"思いつくまま書いてみて。一行でも大丈夫。","replyPh":"続けて書いてみて…","msgLabel":"メッセージ","send":"送信","start":"答えを探す前に、この考えがどこから来たのか、少し話してみない？","startYes":"うん、話してみる","startNow":"先に答えが聞きたい","nowNote":"この試作版はAIにつながっていないから、答えは出せないんだ。実際のアプリなら、ここですぐ答えが聞けるよ。","demoNote":"これはデモ用の質問だよ。実際は、答えに合わせて次の質問が変わるんだ。","follow":["どんなときに、特にそう感じる？","そのとき、いちばん気になるのは何？","その瞬間、いちばん大事にしているのは何だろう？","似たようなこと、前にもあった気がする？"],"fEnd":"ここまで話したこと、一度まとめてみる？まだ書きたかったら、そのまま続けてもいいよ。","wrapGo":"まとめてみる","sumTitle":"この中に、引っかかる問いはある？","sumSaid":"話してくれたこと","candLegend":"問いの候補","cand1":"その瞬間、いちばん守りたかったものは何だったんだろう？","cand2":"人からの評価は、いまの自分にとってどれくらい大事なんだろう？","candOwn":"自分で書く","candEdit":"書き直してもいいよ。自分の言葉にすると、もっといい。","candNote":"候補はあくまで例。原因を決めつけるものじゃないよ。","candGo":"この問いにする","keepTalking":"もう少し話したい","confirmQ":"いま、この問いは心に響いてる？それとも、ほかの問いが浮かんでる？","cYes":"響いてる、これにする","cOther":"ほかの問いが浮かんだ","cUnsure":"まだわからない","cNone":"まだ心に響く問いがない","done":"メタ視点 +3。新しいつながりがひとつ生まれたよ。","doneNext":"この問いで、5ステップのマップを始めよう。","steps":["いい問い","いつものシグナル","シグナルの転換","習慣の作り直し","望む生き方＝自由"],"stepsAria":"5つのステップ","rest":"考えがなかなかほどけない日もあるよね。ここで答えを見つけなくても大丈夫。少し別のことをしているうちに、考えの流れが落ち着くこともあるよ。","restActsNote":"こういうことが、考えの流れを整える助けになるかもしれない。","acts":["日記","散歩","ジョギング","自転車","瞑想","旅"],"restNothing":"何もしなくても大丈夫。","restBack":"もう一度話してみる","restEnd":"今日はここまで","unsure":"大丈夫。決めないまま、ここで止めてもいいよ。","backToQ":"問いをもう一度見る","stopped":"ひと休み中。いつでもまた始められるよ。","restart":"最初から","wrap":"ここでまとめる","stop":"止める","log":"これまでの会話","logTitle":"これまでの会話","logEmpty":"まだ会話はありません。","close":"閉じる","soundOn":"静かな音をつける","soundOff":"音を消す","safety":"この試作版は医療・相談サービスではありません。危険を感じるときや急いで助けが必要なときは、いまいる国・地域の緊急通報番号に連絡してください。","fine":"AI未接続（デモ用の質問）・会話は保存も送信もされません・音はオンにしたときだけ、この画面で生成","tagBtn":"文言の状態を見る","legendA":"青緑の点線＝承認済みの文言（いまは韓国語のみ）","legendP":"コーラルの点線＝提案中の文言","qOpen":"「","qClose":"」"}}};
+const LANGS=[['ko','한국어'],['en','English'],['es-419','Español'],['hi','हिन्दी'],['zh-TW','中文（繁體）'],['ja','日本語']];
+const FONTS={
+  hi:'family=Noto+Serif+Devanagari:wght@400;600&family=Noto+Sans+Devanagari:wght@400;500;600',
+  'zh-TW':'family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@400;500',
+  ja:'family=Noto+Serif+JP:wght@400;600&family=Noto+Sans+JP:wght@400;500'
+};
+let C=CATALOGS.ko,LANG='ko';
+const tr=k=>C.strings[k];
+const st=k=>(C.approved||[]).includes(k)?'A':'P';
+function put(node,k,i){const v=tr(k);node.textContent=i==null?v:v[i];node.dataset.s=st(k)}
+function putRaw(node,t){node.textContent=t;node.removeAttribute('data-s')}
+function mk(tag,cls){const n=document.createElement(tag);if(cls)n.className=cls;return n}
+function mkK(tag,cls,k,i){const n=mk(tag,cls);put(n,k,i);return n}
+const quote=t=>tr('qOpen')+t+tr('qClose');
+
+/* ───────── 상태 ─────────
+   AI 문구는 키로만 저장해서 언어를 바꾸면 그 언어로 다시 보인다. 사용자가 쓴 글은 그대로 둔다(번역 안 함). */
+const S={phase:'ask',fi:0,said:[],turns:[],chosen:null,meta:50,nowNote:false,cand:{idx:0,text:'',edited:false}};
+const confirmed=new Set();
+let busy=false;
+const el={center:$('center'),eyebrow:$('eyebrow'),q:$('q'),sub:$('sub'),extra:$('extra'),choices:$('choices'),dock:$('dock'),msg:$('msg'),send:$('send')};
+const chosenText=()=>S.chosen?(S.chosen.key?tr(S.chosen.key):S.chosen.text):'';
+const logAI=(k,i)=>S.turns.push({k,i});
+const nF=()=>tr('follow').length;
+function logCur(){S.fi<nF()?logAI('follow',S.fi):logAI('fEnd')}
+
+function scene({eyebrow='eyebrow1',q,small=false,sub=null,extra=null,choices=[],dock=false,ph=null},anim){
+  if(anim){el.center.classList.remove('in');void el.center.offsetWidth;el.center.classList.add('in')}
+  put(el.eyebrow,eyebrow);
+  if(q.raw!=null)putRaw(el.q,q.raw);else put(el.q,q.k,q.i);
+  el.q.classList.toggle('small',small);
+  if(sub){put(el.sub,sub);el.sub.hidden=false}else el.sub.hidden=true;
+  el.extra.replaceChildren();if(extra){el.extra.append(extra);el.extra.hidden=false}else el.extra.hidden=true;
+  el.choices.replaceChildren(...choices.map(([k,fn,cls])=>{const b=mkK('button','choice'+(cls?' '+cls:''),k);b.type='button';b.onclick=fn;return b}));
+  el.dock.hidden=!dock;if(ph)el.msg.placeholder=tr(ph);
+  $('wrap').hidden=!(S.said.length&&(S.phase==='start'||S.phase==='explore'));
+  $('stop').hidden=!['start','explore','summary','confirm'].includes(S.phase);
+  if(anim)el.center.scrollTop=0;
+}
+function render(anim=true){
+  switch(S.phase){
+    case'ask':return scene({q:{k:'ask'},dock:true,ph:'askPh'},anim);
+    case'start':return scene({q:{k:'start'},small:true,dock:true,ph:'replyPh',sub:S.nowNote?'nowNote':null,
+      choices:S.nowNote?[['startYes',goFollow]]:[['startYes',goFollow],['startNow',()=>{S.nowNote=true;render()}]]},anim);
+    case'explore':
+      if(S.fi<nF())return scene({q:{k:'follow',i:S.fi},sub:S.fi===0?'demoNote':null,dock:true,ph:'replyPh'},anim);
+      return scene({q:{k:'fEnd'},small:true,dock:true,ph:'replyPh',choices:[['wrapGo',goSummary]]},anim);
+    case'summary':return scene({q:{k:'sumTitle'},small:true,extra:buildSummary(),choices:[['candGo',candGo,'primary'],['keepTalking',keepTalking]]},anim);
+    case'confirm':return scene({q:{raw:quote(chosenText())},sub:'confirmQ',choices:[['cYes',goDone,'primary'],['cOther',goSummary],['cUnsure',goUnsure],['cNone',goRest]]},anim);
+    case'done':return scene({eyebrow:'eyebrowDone',q:{raw:quote(chosenText())},sub:'done',extra:buildDone(),choices:[['restart',restart]]},anim);
+    case'rest':return scene({q:{k:'rest'},small:true,extra:buildRest(),choices:[['restBack',()=>{field.setMode('idle');field.emit('answer');S.phase='explore';logCur();render()}],['restEnd',stop]]},anim);
+    case'unsure':return scene({q:{k:'unsure'},small:true,choices:[['backToQ',()=>{field.setMode('idle');S.phase='confirm';render()}],['restart',restart]]},anim);
+    case'stopped':return scene({q:{k:'stopped'},small:true,choices:[['restart',restart]]},anim);
+  }
+}
+function buildSummary(){
+  const box=mk('div');box.style.cssText='display:grid;gap:14px';
+  if(S.said.length){
+    const s=mk('section','said');s.append(mkK('h3',null,'sumSaid'));
+    const ul=mk('ul');S.said.forEach(t=>{const li=mk('li');putRaw(li,t);ul.append(li)});s.append(ul);box.append(s);
+  }
+  const fs=mk('fieldset','cands');fs.append(mkK('legend',null,'candLegend'));
+  const ta=mk('textarea');ta.id='candText';ta.rows=2;
+  ['cand1','cand2','candOwn'].forEach((k,i)=>{
+    const lab=mk('label','cand'),r=mk('input');r.type='radio';r.name='cand';r.id='cand'+i;r.checked=i===S.cand.idx;
+    lab.append(r,mkK('span',null,k));
+    r.onchange=()=>{S.cand={idx:i,text:'',edited:i===2};ta.value=i<2?tr(k):'';if(i===2)ta.focus()};
+    fs.append(lab);
+  });
+  ta.value=(!S.cand.edited&&S.cand.idx<2)?tr(S.cand.idx?'cand2':'cand1'):S.cand.text;
+  ta.oninput=()=>{S.cand.text=ta.value;S.cand.edited=true};
+  const ed=mk('div','edit'),lb=mkK('label',null,'candEdit');lb.htmlFor='candText';ed.append(lb,ta);
+  box.append(fs,ed,mkK('p','note','candNote'));
+  return box;
+}
+function buildDone(){
+  const box=mk('div');box.style.cssText='display:grid;gap:12px;justify-items:center';
+  const ol=mk('ol','steps');ol.setAttribute('aria-label',tr('stepsAria'));
+  tr('steps').forEach((t,i)=>{const li=mkK('li',i===0?'on':null,'steps',i);if(i===0)li.textContent='✓ '+t;ol.append(li)});
+  box.append(ol,mkK('p','note','doneNext'));return box;
+}
+function buildRest(){
+  const box=mk('div');box.style.cssText='display:grid;gap:12px;justify-items:center';
+  const ul=mk('ul','acts');tr('acts').forEach((t,i)=>ul.append(mkK('li',null,'acts',i)));
+  box.append(mkK('p','note','restActsNote'),ul,mkK('p','note','restNothing'));return box;
+}
+
+/* 전이 */
+function think(next){
+  busy=true;el.send.disabled=true;el.q.classList.add('dim');field.setMode('think');
+  setTimeout(()=>{field.setMode('idle');field.emit('answer');busy=false;el.send.disabled=false;el.q.classList.remove('dim');next();render()},field.reduce?250:1300);
+}
+function send(){
+  const v=el.msg.value.trim();if(!v||busy)return;
+  el.msg.value='';grow();S.turns.push({me:true,t:v});S.said.push(v);field.emit('user');
+  think(()=>{
+    if(S.phase==='ask'){S.phase='start';S.nowNote=false;logAI('start')}
+    else if(S.phase==='start'){S.phase='explore';S.fi=0;logCur()}
+    else{S.fi=Math.min(S.fi+1,nF());logCur()}
+  });
+}
+function goFollow(){field.emit('answer');S.phase='explore';S.fi=0;logCur();render()}
+function goSummary(){
+  field.emit('answer');S.phase='summary';logAI('sumTitle');
+  const c=S.chosen;
+  S.cand=!c?{idx:0,text:'',edited:false}:c.key?{idx:c.key==='cand2'?1:0,text:'',edited:false}:{idx:2,text:c.text,edited:true};
+  render();
+}
+function keepTalking(){field.emit('answer');S.phase='explore';S.fi=Math.min(S.fi+1,nF());logCur();render()}
+function candGo(){
+  const v=$('candText').value.trim();if(!v){$('candText').focus();return}
+  S.chosen=(!S.cand.edited&&S.cand.idx<2)?{key:S.cand.idx?'cand2':'cand1'}:{text:v};
+  field.emit('answer');S.phase='confirm';logAI('confirmQ');render();
+}
+function goDone(){
+  const id=S.chosen.key?'k:'+S.chosen.key:'t:'+S.chosen.text;
+  if(!confirmed.has(id)){confirmed.add(id);setMeta(S.meta+3)}
+  field.emit('confirm');field.newLinks();S.phase='done';render();
+}
+function goRest(){field.setMode('rest');S.phase='rest';logAI('rest');render()}
+function goUnsure(){field.setMode('rest');S.phase='unsure';logAI('unsure');render()}
+function stop(){field.setMode('rest');S.phase='stopped';logAI('stopped');render()}
+function restart(){S.fi=0;S.said=[];S.chosen=null;S.nowNote=false;field.setMode('idle');field.emit('answer');S.phase='ask';logAI('ask');render()}
+
+function setMetaAria(){$('meta').setAttribute('aria-label',tr('metaAria').replace('{n}',S.meta))}
+function setMeta(v){
+  const from=S.meta;S.meta=v;
+  $('metaFill').style.width=Math.min(100,v)+'%';setMetaAria();
+  if(field.reduce){$('metaNum').value=v;return}
+  const t0=performance.now();
+  (function tick(now){const p=Math.min(1,(now-t0)/900);$('metaNum').value=Math.round(from+(v-from)*p);if(p<1)requestAnimationFrame(tick)})(t0);
+}
+
+/* 언어 전환 */
+const loadedFonts=new Set();
+function loadFont(code){
+  if(!FONTS[code]||loadedFonts.has(code))return;loadedFonts.add(code);
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?'+FONTS[code]+'&display=swap';document.head.append(l);
+}
+function applyStatic(){
+  document.querySelectorAll('[data-k]').forEach(n=>put(n,n.dataset.k));
+  $('meter').title=tr('metaTitle');$('send').setAttribute('aria-label',tr('send'));
+  $('sheet').setAttribute('aria-label',tr('logTitle'));
+  put($('soundLabel'),sound.isOn()?'soundOff':'soundOn');
+  setMetaAria();
+}
+function setLang(code,anim){
+  if(!CATALOGS[code])code='ko';
+  LANG=code;C=CATALOGS[code];document.documentElement.lang=code;loadFont(code);
+  $('lang').value=code;applyStatic();render(anim);
+  if(!$('sheet').hidden)openLog();
+  requestAnimationFrame(field.layout);
+}
+LANGS.forEach(([c,n])=>{const o=mk('option');o.value=c;o.textContent=n;o.lang=c;$('lang').append(o)});
+$('lang').onchange=e=>{setLang(e.target.value,true);try{location.hash=e.target.value}catch(_){}}
+addEventListener('hashchange',()=>{const c=decodeURIComponent(location.hash.slice(1));if(CATALOGS[c]&&c!==LANG)setLang(c,true)});
+
+/* 입력 */
+function grow(){el.msg.style.height='auto';el.msg.style.height=Math.min(el.msg.scrollHeight,120)+'px'}
+$('form').addEventListener('submit',e=>{e.preventDefault();send()});
+el.msg.addEventListener('input',grow);
+el.msg.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();send()}});
+$('wrap').onclick=goSummary;
+$('stop').onclick=stop;
+$('soundBtn').onclick=e=>{const on=sound.toggle();e.currentTarget.setAttribute('aria-pressed',on);put($('soundLabel'),on?'soundOff':'soundOn')};
+
+/* 지난 대화 */
+function openLog(){
+  const log=$('log');log.replaceChildren();
+  if(!S.turns.some(t=>t.me))log.append(mkK('li','empty','logEmpty'));
+  else S.turns.forEach(t=>{const li=mk('li',t.me?'me':null);t.me?putRaw(li,t.t):put(li,t.k,t.i);log.append(li)});
+  put($('safety'),'safety');$('sheet').hidden=false;
+}
+$('logBtn').onclick=()=>{openLog();$('closeSheet').focus()};
+$('closeSheet').onclick=()=>{$('sheet').hidden=true;$('logBtn').focus()};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sheet').hidden)$('closeSheet').click()});
+
+/* 문구 상태 보기 */
+$('tagBtn').onclick=e=>{const on=document.body.classList.toggle('tags');e.currentTarget.setAttribute('aria-pressed',on);$('legend').hidden=!on};
+
+/* 빈 곳을 누르면 그 자리에서 작은 파문 */
+addEventListener('pointerdown',e=>{
+  if(e.target.closest('button,textarea,input,select,label,.dock,.sheet,.bar,.extra,.choices,.fine,.tools'))return;
+  field.emit('tap',e.clientX,e.clientY);
+});
+
+logAI('ask');
+setLang(decodeURIComponent(location.hash.slice(1))||'ko',false);
+setTimeout(()=>field.emit('answer'),500);
+</script>
+
+</html>
