@@ -1,0 +1,15 @@
+생각의 연결 — 대화 시안 v3.3.8 Gemini 연결판 (제안) · 2026-11-01 · 초안 담당 AI
+자세한 내용은 README_배포안내.md
+
+파일 목록 (sha256 앞 16자리 · 바이트 · 경로)
+e3ab0673e807c966 4626 README_배포안내.md
+92708f9f6f37e1c4 4358 i18n/chat_v3.3.8/en.json
+bca115a28c3c50f5 4688 i18n/chat_v3.3.8/es-419.json
+664ecf4a53384a6d 8231 i18n/chat_v3.3.8/hi.json
+2a4ea70eed026392 5372 i18n/chat_v3.3.8/ja.json
+13e1c00b0560d793 4948 i18n/chat_v3.3.8/ko.json
+1c513254f9a788c0 4215 i18n/chat_v3.3.8/zh-TW.json
+e27d8a5096b45c1b 93441 index.html
+d5c73a6b7009aea5 24307 worker/worker.js
+440d178538923f0a 621 worker/wrangler.toml
+4b1a9b30e8d6d7ad 19902 내면명탐정_v3.0_프롬프트_PDF추출본.txt
