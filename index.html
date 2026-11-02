@@ -4,7 +4,15 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <!--
   생각의 연결 — 좋은 질문 (로그인 + 회원가입 + 대화) 웹 시안
-  버전: v3.3.12-제안 (사용자 승인 전) · 2026-11-02 · 초안 담당 AI 작성 · 바탕: v3.3.11(a668f4964b8744f3, main 라이브)
+  버전: v3.3.13-제안 (사용자 승인·Muse 검토 전) · 2026-11-02 · 초안 담당 AI 작성 · 바탕: v3.3.12(사용자 결정 반영본: 움직임 기본 '멈춤')
+  v3.3.13에서 바뀐 것 — 화면 스크롤·키 반응만 (프롬프트·페르소나·Firebase 설정·App Check·모델 차례는 그대로):
+    1) 대화 화면 높이: .stage가 height:100%였는데 부모(#chat)에 높이가 없어 말풍선이 쌓일수록 화면이 길어지고 입력창이 아래로 밀렸다.
+       → .stage를 화면에 고정(position:fixed)하고 높이를 visualViewport(키보드를 뺀 보이는 높이, 없으면 dvh)로 잡는다(CSS 변수 --vvh·--vvt).
+    2) 아래로 스크롤: 말풍선 추가·스트리밍·답 완료·창 크기/키보드 변화·레이아웃 변화(ResizeObserver) 때 마지막 말풍선이 보이게 다시 내린다.
+       사용자가 직접 위로 올려 읽는 중이면 스트리밍 중에는 끌어내리지 않는다(새 말풍선·답 완료 때는 내린다).
+    3) 키 반응: 입력창에 커서가 있으면 배경은 멈춘다(기다리는 중이거나 파문이 살아 있을 때만 초당 10번 이하). 키를 누르는 순간부터 쉬고,
+       브라우저가 '입력 대기 중'이라고 알리면(isInputPending) 그리지 않는다. 움직임 멈춤 상태의 배경 다시 그리기는 입력창 높이가 바뀔 때마다가 아니라
+       잠잠해진 뒤 한 번만. 높이 맞춤(field-sizing 미지원 브라우저)은 프레임당 한 번으로 묶는다.
   v3.3.12에서 바뀐 것 — Muse 지시문(2026-11-02 10:0x): 문제 A 401 App Check, 문제 B 타이핑 딜레이
     A) AI 요청이 401(App Check 토큰 무효)이면 페이지가 App Check를 스스로 점검한다(일반 토큰·일회용 토큰을 받아 보기. 토큰 값은 어디에도 보이거나 남기지 않음).
        일반 토큰은 받아지는데 거절된 경우(= 콘솔의 '재사용 방지' 적용으로 보이는 경우)에만 일회용(limited-use) 토큰으로 바꿔 한 번만 다시 보낸다.
@@ -144,8 +152,10 @@ button,select,input,textarea{font:inherit;color:inherit}
 
 /* ── 대화 화면 (기존 좋은 질문 페이지) ── */
 #field{position:fixed;inset:0;width:100%;height:100%;display:block}
-.stage{position:relative;z-index:1;height:100%;max-width:640px;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;gap:8px;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 8px;box-sizing:border-box}
+.stage{position:fixed;z-index:1;left:0;right:0;top:var(--vvt,0px);width:100%;height:var(--vvh,100vh);max-width:640px;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;gap:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 8px;box-sizing:border-box;overflow:hidden}
+@supports (height:100dvh){.stage{height:var(--vvh,100dvh)}}
+.stage{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}.kb .stage{padding-bottom:8px}
 .bar{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
 .brand2{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
 .brand2 b{font-family:var(--display);font-weight:700;font-size:17px}
@@ -328,8 +338,9 @@ const field=(()=>{
     tx=c.left+c.width/2;ty=c.top+c.height/2;
     RmT=Math.max(140,Math.min(W*.5,c.height*.6,460));
     if(!cx||reduce){cx=tx;cy=ty;Rm=RmT}
-    if(reduce)draw(0);
+    if(reduce)stillSoon();   // v3.3.13: 입력창 높이가 바뀔 때마다가 아니라 잠잠해진 뒤 한 번
   }
+  let stillT=0;function stillSoon(){clearTimeout(stillT);stillT=setTimeout(()=>{if(reduce)draw(0)},180)}
   function resize(){
     const dpr=Math.min(COARSE?1.5:2,window.devicePixelRatio||1);   // v3.3.12: 터치 기기는 배율 상한 1.5
     W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
@@ -428,15 +439,21 @@ const field=(()=>{
     if(reduce){running=false;return}
     requestAnimationFrame(frame);
     // v3.3.12: 글을 치는 동안(마지막 입력 뒤 1.2초)은 그리지 않고, 입력창에 커서가 있으면 초당 약 15번만 그린다
-    if(now<quietUntil||(focused&&now-lastDraw<66))return;
+    if(now<quietUntil)return;
+    if(focused){   // v3.3.13: 입력창에 커서가 있으면 배경은 멈춘다. 답을 기다리는 중이거나 파문이 살아 있을 때만 초당 10번 이하
+      if(speedT<2&&!rings.some(g=>g.ev))return;
+      if(now-lastDraw<100)return;
+    }
+    if(inputPending())return;   // 브라우저가 키 입력을 기다리고 있으면 그리지 않는다
     const dt=Math.min(.08,(now-last)/1000);last=now;lastDraw=now;T+=dt;
     speed+=(speedT-speed)*Math.min(1,dt*1.5);
     cx+=(tx-cx)*Math.min(1,dt*2);cy+=(ty-cy)*Math.min(1,dt*2);Rm+=(RmT-Rm)*Math.min(1,dt*2);
     draw(dt);
   }
+  const inputPending=()=>{try{return !!(navigator.scheduling&&navigator.scheduling.isInputPending&&navigator.scheduling.isInputPending())}catch(_){return false}};
   function startLoop(){if(running||reduce)return;running=true;requestAnimationFrame(t=>{last=t;frame(t)})}
   function setStill(on){reduce=!!on;if(reduce){cx=tx;cy=ty;Rm=RmT;draw(0)}else startLoop()}
-  const typing=()=>{quietUntil=performance.now()+1200};
+  const typing=()=>{quietUntil=performance.now()+1500};
   const setFocus=f=>{focused=!!f};
   addEventListener('resize',resize);
   if('ResizeObserver' in window)new ResizeObserver(layout).observe($('center'));
@@ -786,8 +803,38 @@ $('startBtn').onclick=()=>{if(!S.user)return;S.startLang=LANG;showChat();begin()
 /* ───────── 대화 화면 ───────── */
 const logEl=$('log');
 const clean=s=>s.replace(/\*\*(.+?)\*\*/g,'$1').replace(/^#{1,6}\s+/gm,'');
-function scrollEnd(){const c=$('center');c.scrollTop=c.scrollHeight}
-function bubble(cls,text){const li=document.createElement('li');li.className=cls;li.textContent=text;logEl.append(li);scrollEnd();return li}
+/* v3.3.13: 마지막 말풍선이 보이게 아래로 내린다. pinned = 아래에 붙어 있는 중(사용자가 직접 위로 올리면 풀림).
+   scroll 이벤트는 우리가 내린 것과 사용자가 올린 것을 구별하지 못하므로, 사용자 조작(휠·터치·키) 직후 800ms 안의 scroll만 사용자 것으로 본다. */
+const centerEl=$('center');let pinned=true,lastUser=0,sePending=false;
+const nearEnd=()=>centerEl.scrollHeight-centerEl.scrollTop-centerEl.clientHeight<72;
+const userTouch=()=>{lastUser=performance.now()};
+['wheel','touchstart','touchmove','pointerdown'].forEach(t=>centerEl.addEventListener(t,userTouch,{passive:true}));
+centerEl.addEventListener('keydown',userTouch);
+centerEl.addEventListener('scroll',()=>{const n=performance.now();if(n-lastUser<800){lastUser=n;pinned=nearEnd()}},{passive:true});
+function scrollNow(){centerEl.scrollTop=centerEl.scrollHeight}
+function scrollEnd(force){
+  if(force===true)pinned=true;
+  if(!pinned)return;
+  scrollNow();
+  if(!sePending){sePending=true;requestAnimationFrame(()=>{sePending=false;if(pinned)scrollNow()})}   // 레이아웃이 끝난 뒤 한 번 더
+}
+if('ResizeObserver' in window){const ro=new ResizeObserver(()=>{if(pinned)scrollNow()});ro.observe(logEl);ro.observe(centerEl)}   // 말풍선 높이·화면 높이(키보드)가 바뀌면 다시 내린다
+function bubble(cls,text){const li=document.createElement('li');li.className=cls;li.textContent=text;logEl.append(li);scrollEnd(true);return li}
+/* v3.3.13: 화면 높이 = 보이는 영역(visualViewport). 모바일 키보드가 열리면 입력창이 가려지지 않게 --vvh·--vvt를 갱신한다 */
+(function(){
+  const root=document.documentElement,vv=window.visualViewport;let raf=0;
+  function apply(){
+    raf=0;
+    const h=vv?vv.height:innerHeight,t=vv?vv.offsetTop:0;
+    root.style.setProperty('--vvh',Math.round(h)+'px');root.style.setProperty('--vvt',Math.round(t)+'px');
+    root.classList.toggle('kb',!!vv&&innerHeight-vv.height>120);   // 키보드가 열렸으면(아래 안전 여백 불필요)
+    scrollEnd();
+  }
+  const schedule=()=>{if(!raf)raf=requestAnimationFrame(apply)};
+  if(vv){vv.addEventListener('resize',schedule);vv.addEventListener('scroll',schedule)}
+  addEventListener('resize',schedule);addEventListener('orientationchange',schedule);
+  apply();
+})();
 function sysNote(k,retry,detail){
   const li=bubble('sys','');const sp=document.createElement('span');sp.dataset.k=k;put(sp,k);li.append(sp);
   if(retry){const b=document.createElement('button');b.type='button';b.className='retry';b.dataset.k='retry';put(b,'retry');b.onclick=()=>{li.remove();if(lastIsUser())ask()};li.append(b)}
@@ -929,10 +976,10 @@ function errLine(e,model){  // '자세히' 한 줄: HTTP 상태 · 모델 · 원
   return[cd.status?'HTTP '+cd.status:String((e&&e.code)||'error'),model,ids.join(' / '),m.trim().slice(0,280)].filter(Boolean).join(' · ');
 }
 function logUsage(u,model){ // 토큰 사용량만 콘솔에 남긴다(대화 내용 없음). 기록 상한 결정을 실제 숫자로 하기 위한 것
-  try{console.info('[TC v3.3.12] tokens',{model,prompt:u.promptTokenCount,output:u.candidatesTokenCount,thoughts:u.thoughtsTokenCount,total:u.totalTokenCount,turns:S.turns.length})}catch(_){}
+  try{console.info('[TC v3.3.13] tokens',{model,prompt:u.promptTokenCount,output:u.candidatesTokenCount,thoughts:u.thoughtsTokenCount,total:u.totalTokenCount,turns:S.turns.length})}catch(_){}
 }
 function logErr(e,model){   // 오류 원인 정보만 콘솔에 남긴다(대화 내용 없음)
-  try{const cd=(e&&e.customErrorData)||{};console.warn('[TC v3.3.12] chat error',{model,status:cd.status,code:e&&e.code,details:cd.errorDetails,message:String((e&&e.message)||'').slice(0,600)})}catch(_){}
+  try{const cd=(e&&e.customErrorData)||{};console.warn('[TC v3.3.13] chat error',{model,status:cd.status,code:e&&e.code,details:cd.errorDetails,message:String((e&&e.message)||'').slice(0,600)})}catch(_){}
 }
 const MAX_CHARS=120000;
 function turnsForModel(){
@@ -992,7 +1039,7 @@ async function ask(fallback){   // fallback: v3.3.11 다음 모델로 넘어가 
       if(ac.session==='OK'&&ac.limited==='OK'&&!BK.limited){BK.setLimited(true);next=true}
       else sysNote('setupAI',false,chainErrs.join('\n'));
     }else sysNote(k,retry,chainErrs.join('\n'));
-  }finally{setBusy(false);scrollEnd();if(next&&!S.stop)ask(true)}
+  }finally{setBusy(false);scrollEnd(true);if(next&&!S.stop)ask(true)}
 }
 function sendText(v){
   v=v.trim();if(!v||S.busy||S.dead)return;
@@ -1007,7 +1054,8 @@ function sendText(v){
 }
 const AUTO_H=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));   // v3.3.12: 브라우저가 높이를 맞추면 글자마다 높이를 재지 않는다
 if(AUTO_H)$('msg').classList.add('fs');
-function grow(){if(AUTO_H)return;const m=$('msg');m.style.height='auto';m.style.height=Math.min(m.scrollHeight,140)+'px'}
+let growQ=0;
+function grow(){if(AUTO_H||growQ)return;growQ=requestAnimationFrame(()=>{growQ=0;const m=$('msg');m.style.height='auto';m.style.height=Math.min(m.scrollHeight,140)+'px'})}   // v3.3.13: 프레임당 한 번
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
   if(S.busy||S.dead)return;                 // v3.3.10: 답을 기다리는 동안 Enter를 눌러도 쓴 글이 지워지지 않게
@@ -1015,10 +1063,12 @@ $('form').addEventListener('submit',e=>{
   const v=$('msg').value;$('msg').value='';grow();sendText(v);
 });
 $('msg').addEventListener('input',()=>{field.typing();grow()});
+['beforeinput','compositionstart','compositionupdate'].forEach(t=>$('msg').addEventListener(t,()=>field.typing()));   // v3.3.13: 키를 누르는 순간부터 배경은 쉰다(한글 조합 포함)
+$('msg').addEventListener('focus',()=>setTimeout(()=>scrollEnd(true),250));   // 키보드가 열린 뒤 마지막 말풍선이 보이게
 $('msg').addEventListener('focus',()=>field.setFocus(true));
 $('msg').addEventListener('blur',()=>field.setFocus(false));
 document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#landing'))sig.typing()},true);
-$('msg').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();$('form').requestSubmit()}});
+$('msg').addEventListener('keydown',e=>{field.typing();if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();$('form').requestSubmit()}});
 $('stopb').onclick=()=>{S.stop=true};
 document.querySelectorAll('.cmd').forEach(b=>b.onclick=()=>sendText(tr(b.dataset.cmd)));
 
