@@ -1,0 +1,14 @@
+{
+  "version": "3.3.12-proposal",
+  "status": "제안 (사용자 승인 전). ko 이외 5개 언어는 원어민 검토 대기, 특히 hi. 기존 61개 + v3.3.10 8개 키는 바꾸지 않고, 이 2개 키만 더한다.",
+  "note": "대화 화면 아래 '움직임' 버튼 글자. 버튼에는 누르면 일어날 일을 적는다(소리 버튼과 같은 방식). motionOff = 지금 움직이는 중일 때, motionOn = 지금 멈춰 있을 때.",
+  "keys": ["motionOff", "motionOn"],
+  "strings": {
+    "ko": {"motionOff": "움직임 줄이기", "motionOn": "움직임 켜기"},
+    "en": {"motionOff": "Reduce motion", "motionOn": "Turn motion on"},
+    "es-419": {"motionOff": "Reducir movimiento", "motionOn": "Activar movimiento"},
+    "hi": {"motionOff": "हलचल कम करो", "motionOn": "हलचल चालू करो"},
+    "zh-TW": {"motionOff": "減少動態效果", "motionOn": "開啟動態效果"},
+    "ja": {"motionOff": "動きを減らす", "motionOn": "動きをつける"}
+  }
+}
