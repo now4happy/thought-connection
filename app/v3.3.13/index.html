@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>생각의 연결 좋은 질문</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  생각의 연결 — 좋은 질문 (로그인 + 회원가입 + 대화) 웹 시안
+  버전: v3.3.13-제안 (사용자 승인·Muse 검토 전) · 2026-11-02 · 초안 담당 AI 작성 · 바탕: v3.3.12(사용자 결정 반영본: 움직임 기본 '멈춤')
+  v3.3.13에서 바뀐 것 — 화면 스크롤·키 반응만 (프롬프트·페르소나·Firebase 설정·App Check·모델 차례는 그대로):
+    1) 대화 화면 높이: .stage가 height:100%였는데 부모(#chat)에 높이가 없어 말풍선이 쌓일수록 화면이 길어지고 입력창이 아래로 밀렸다.
+       → .stage를 화면에 고정(position:fixed)하고 높이를 visualViewport(키보드를 뺀 보이는 높이, 없으면 dvh)로 잡는다(CSS 변수 --vvh·--vvt).
+    2) 아래로 스크롤: 말풍선 추가·스트리밍·답 완료·창 크기/키보드 변화·레이아웃 변화(ResizeObserver) 때 마지막 말풍선이 보이게 다시 내린다.
+       사용자가 직접 위로 올려 읽는 중이면 스트리밍 중에는 끌어내리지 않는다(새 말풍선·답 완료 때는 내린다).
+    3) 키 반응: 입력창에 커서가 있으면 배경은 멈춘다(기다리는 중이거나 파문이 살아 있을 때만 초당 10번 이하). 키를 누르는 순간부터 쉬고,
+       브라우저가 '입력 대기 중'이라고 알리면(isInputPending) 그리지 않는다. 움직임 멈춤 상태의 배경 다시 그리기는 입력창 높이가 바뀔 때마다가 아니라
+       잠잠해진 뒤 한 번만. 높이 맞춤(field-sizing 미지원 브라우저)은 프레임당 한 번으로 묶는다.
+  v3.3.12에서 바뀐 것 — Muse 지시문(2026-11-02 10:0x): 문제 A 401 App Check, 문제 B 타이핑 딜레이
+    A) AI 요청이 401(App Check 토큰 무효)이면 페이지가 App Check를 스스로 점검한다(일반 토큰·일회용 토큰을 받아 보기. 토큰 값은 어디에도 보이거나 남기지 않음).
+       일반 토큰은 받아지는데 거절된 경우(= 콘솔의 '재사용 방지' 적용으로 보이는 경우)에만 일회용(limited-use) 토큰으로 바꿔 한 번만 다시 보낸다.
+       바꾼 방식은 이 브라우저에 기억한다(tc_ac_limited). 토큰 발급 자체가 실패하면 그 오류 문장을 '자세히'에 보여 주고 멈춘다(콘솔 설정 문제).
+    B) 움직임 부담 줄이기: 글을 치는 동안(마지막 입력 뒤 1.2초) 배경을 그리지 않고, 입력창에 커서가 있으면 초당 약 15번만 그린다.
+       터치 기기에서는 배경 위 블러(backdrop-filter)를 끄고 바탕을 진하게, 캔버스 배율 상한 2→1.5, 작은 호 개수를 줄인다.
+       대화 화면 아래에 '움직임 줄이기' 버튼(정지 그림 1장)을 둔다. 기본값은 '멈춤'(MOTION_DEFAULT='still', 사용자 결정 2026-11-02).
+       입력창 높이는 브라우저가 지원하면 CSS(field-sizing)로 맞춰 글자마다 하는 높이 계산을 없앴다.
+  v3.3.11에서 바뀐 것 — 사용자 결정(2026-11-02 07:19): "모델 변경, 품질보다 실행 건수가 중요" / "무료로 계속" / "__TC_BACKEND 필요 없으면 제거"
+    1) 모델: gemini-3.8-flash 하나 → MODELS 목록(gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-3.8-flash) 차례로 쓴다.
+       한도는 모델마다 따로 잡히므로, 한 모델이 429(한도)·404(모델 없음)면 같은 모델로 다시 보내지 않고 다음 모델로 한 번씩만 넘어간다.
+       막힌 모델은 종류별 시간 동안 쉬게 하고 이 브라우저에 기억한다. 모든 모델이 쉬는 중이면 가장 먼저 풀리는 시각까지 요청을 보내지 않는다. (차례 시도는 초안 AI 제안)
+    2) window.__TC_BACKEND(점검용 가짜 서버 연결부) 제거. 점검은 Firebase 모듈 주소를 가로채는 방식으로 한다(페이지에 점검용 코드 없음).
+    3) 오류 안내마다 '자세히'를 두고 HTTP 상태 · 모델 · Google이 보낸 원문 앞부분을 보여 준다(태블릿·휴대폰에서 개발자 콘솔 없이 원인 확인). 대화 내용은 넣지 않는다.
+  v3.3.10에서 바뀐 것 (Gemini 무료 한도 429 대응, 대화 지침·안전 문구·화면 구성은 그대로):
+    1) 429 응답 안의 원인 정보(QuotaFailure·RetryInfo)를 읽어 분당 한도 / 하루 한도 / 한도 0 / 알 수 없음으로 나눈다.
+    2) 한도에 걸리면 자동 재시도 없이 대기한다. 대기 중에는 요청을 보내지 않고(보내기 버튼 잠금), 남은 시간을 보여 준다.
+       하루 한도는 Google 문서 기준 '미국 태평양 시간 자정'에 풀리므로, 그 시각을 사용자 시간대로 바꿔 보여 준다.
+    3) 오류 구분을 HTTP 상태 번호 우선으로 바꿨다(429=한도, 401·403=설정). 상태 번호가 없을 때만 예전처럼 글자로 구분한다.
+    4) 실패한 메시지 뒤에 새 메시지를 보내면 같은 차례로 합친다(사용자 차례가 연달아 쌓이지 않게). 바쁠 때 Enter로 쓴 글이 지워지던 문제도 막았다.
+    5) 응답마다 토큰 사용량(입력·출력·생각·합계)을 브라우저 개발자 콘솔에만 남긴다. 대화 내용은 남기지 않는다.
+  바꾸지 않은 것: 대화 기록 상한(MAX_CHARS 120,000자, 결정 대기), 앱 실행 정보 문구(안의 v3.3.9 표기 포함), 프롬프트·안전 문구·화면 문구.
+  사용자 요청(2026-11-02 04:55): 내면 명탐정 v3.0 프롬프트를 좋은 질문 대화에 적용 / 테스트라 Gemini 무료 / 어디서나 어느 기기에서든 로그인 /
+    회원가입으로 사용자마다 로그인 / 첨부 스케치(로그인·페르소나 선택 첫 화면)를 전문가 수준으로 / 배경 검정 아님 / 기존 좋은 질문 페이지와 비슷하게.
+  구조: 정적 웹페이지 1개 + Firebase(무료 Spark 요금제)
+    - Firebase Authentication: 이메일·비밀번호 회원가입·로그인·비밀번호 재설정. 계정은 서버에 있으므로 어느 기기에서나 같은 계정으로 로그인.
+    - Firebase AI Logic + Gemini Developer API(무료 등급): 모델 gemini-3.8-flash. API 키를 페이지에 넣지 않는다(Firebase가 대신 호출).
+    - App Check(reCAPTCHA Enterprise): Firebase 공식 문서상 2026-11-02부터 AI Logic에 필수(자동 적용은 2027-01-21까지 미룰 수 있음).
+  설정: 아래 FIREBASE_CONFIG, RECAPTCHA_ENTERPRISE_KEY 두 곳만 채우면 된다(공개용 값, 비밀 아님). 비어 있으면 "아직 연결 안 됨" 안내와 함께 화면만 보인다.
+  프롬프트: PDF「내면 명탐정 v3.0」세 코드 블록 원문 그대로 + 앱 실행 정보 4줄 → Gemini systemInstruction.
+  저장: 계정(이름·이메일)만 Firebase에 저장. 대화는 저장하지 않는다(페이지 메모리에만 있음). 고른 페르소나만 이 브라우저에 기억.
+  언어: ko, en, es-419, hi, zh-TW, ja. 화면 문구 카탈로그 원본은 i18n/v3.3.9/<언어>.json.
+    v3.3.10에서 더한 문구 8개(한도 대기 안내)는 app/v3.3.10/i18n/quota_v3.3.10.json에 따로 있고, 아래 CATALOG_ADD로 합친다. 기존 61개 키는 바꾸지 않았다. v3.3.11은 문구를 더하지 않았다.
+    v3.3.12에서 더한 문구 2개(움직임 버튼)는 app/v3.3.12/i18n/motion_v3.3.12.json에 따로 있고, CATALOG_ADD2로 합친다.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: 밝은 안개빛 바탕. 왼쪽 = 문구 + 동심원 위에서 신호가 연결되는 그림, 오른쪽 = 로그인·가입 카드(로그인 뒤 페르소나 선택), 아래 = 주의사항.
+   대화 화면은 기존 좋은 질문 페이지(물결 고리)를 그대로 쓴다. */
+:root{
+  --paper:#f3f6f9;        /* 바탕 */
+  --ink:#152033;          /* 글자·선 */
+  --ink-2:#3a4860;
+  --mist2:#5d6b80;        /* 보조 글자 */
+  --rule:#d6dde7;
+  --card:#ffffff;
+  --blue:#3e7fd0;         /* 고리 */
+  --void:#02050b; --ink-d:#e6eefa; --mist:#93a8c3; --ice:#cfe2fb;
+  --coral:#F06D75;        /* 기존 연결 (고정 색) */
+  --teal:#17B8A6;         /* 새 연결 (고정 색) */
+  --teal-ink:#0e7d71;
+  --danger:#c2414a;
+  --glass:rgba(6,13,26,.66); --line:rgba(140,180,232,.2);
+  --display:"Gowun Batang","Nanum Myeongjo","Noto Serif KR",Georgia,serif;
+  --ui:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+html:lang(hi){--display:"Noto Serif Devanagari","Nirmala UI",serif;--ui:"Noto Sans Devanagari","Nirmala UI",system-ui,sans-serif}
+html:lang(zh-TW){--display:"Noto Serif TC","Songti TC","PMingLiU",serif;--ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+html:lang(ja){--display:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;--ui:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;font-family:var(--ui);font-size:15px;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:anywhere}
+html:lang(zh-TW) body,html:lang(ja) body{word-break:normal;line-break:strict}
+body.on-landing{color:var(--ink);background:
+  radial-gradient(900px 520px at 88% -8%,rgba(23,184,166,.10),transparent 60%),
+  radial-gradient(800px 600px at -10% 30%,rgba(62,127,208,.09),transparent 60%),var(--paper)}
+body.on-chat{background:var(--void);color:var(--ink-d);overflow:hidden;color-scheme:dark}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── 첫 화면 ── */
+.landing{max-width:1120px;margin:0 auto;box-sizing:border-box;display:grid;gap:28px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 32px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.01em}
+.mark{width:30px;height:30px;flex:none}
+.lang{appearance:none;-webkit-appearance:none;border-radius:999px;padding:7px 28px 7px 13px;font-size:12.5px;cursor:pointer;color:var(--ink);
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6b80' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 11px center/9px;border:1px solid var(--rule)}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:28px;align-items:start}
+.intro{display:grid;gap:14px;min-width:0}
+.eyebrow{margin:0;font-size:12px;letter-spacing:.16em;color:var(--teal-ink);font-weight:600}
+.headline{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(23px,3.1vw,33px);line-height:1.55;text-wrap:balance;max-width:24em;color:var(--ink)}
+.visual{margin:6px 0 0;border-radius:26px;overflow:hidden;border:1px solid var(--rule);
+  background:radial-gradient(120% 90% at 50% 52%,#ffffff 0%,#f6f9fc 55%,#edf2f7 100%)}
+#sig{display:block;width:100%;aspect-ratio:5/4;max-width:100%}
+
+.card{background:var(--card);border:1px solid var(--rule);border-radius:24px;padding:26px 24px;
+  box-shadow:0 1px 0 rgba(21,32,51,.04),0 18px 40px -24px rgba(21,32,51,.28);min-width:0}
+.card .st{display:none}
+.card[data-state="loading"] .s-loading,.card[data-state="out"] .s-out,.card[data-state="unconf"] .s-out,
+.card[data-state="unconf"] .s-unconf,.card[data-state="in"] .s-in{display:block}
+.muted{margin:0;color:var(--mist2);font-size:13px;line-height:1.6}
+.notice{margin:0 0 16px;padding:11px 13px;border-radius:12px;background:#fff6e8;border:1px solid #f3dfbd;color:#7a5512;font-size:12.5px;line-height:1.6}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:#eef2f6;margin-bottom:20px}
+.tab{border:0;border-radius:10px;padding:10px 8px;background:transparent;font-size:14px;font-weight:600;color:var(--mist2);cursor:pointer}
+.tab[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(21,32,51,.12)}
+.form{display:grid;gap:14px}
+.form fieldset{border:0;margin:0;padding:0;display:grid;gap:14px;min-width:0}
+.fld{display:grid;gap:6px}
+.fld label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.fld .hint{font-size:11.5px;color:var(--mist2)}
+.fld input{width:100%;box-sizing:border-box;height:46px;border:1px solid var(--rule);border-radius:12px;padding:0 14px;background:#fff;font-size:15px;transition:border-color .15s,box-shadow .15s}
+.fld input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(23,184,166,.18)}
+.form fieldset:disabled input{background:#f1f4f7;color:#93a0b2}
+.agree{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.6;color:var(--ink-2);cursor:pointer}
+.agree input{margin-top:3px;width:16px;height:16px;accent-color:var(--teal);flex:none}
+.err{margin:0;font-size:12.5px;color:var(--danger);min-height:0}
+.ok{margin:0;font-size:12.5px;color:var(--teal-ink)}
+.primary{height:48px;border:0;border-radius:14px;background:var(--ink);color:#fff;font-weight:600;font-size:15.5px;cursor:pointer;transition:background .15s}
+.primary:hover{background:#22304a}
+.primary:disabled{opacity:.55;cursor:default}
+.link{justify-self:center;background:none;border:0;color:var(--mist2);font-size:12.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
+.link:hover{color:var(--ink)}
+.hello{margin:0 0 2px;font-family:var(--display);font-size:22px;font-weight:700}
+.personas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0 18px;max-height:332px;overflow-y:auto;padding:2px;scrollbar-width:thin}
+.pcard{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;padding:10px 12px;border-radius:14px;border:1px solid var(--rule);background:#fff;cursor:pointer;min-width:0;transition:border-color .15s,background .15s}
+.pcard:hover{border-color:#b9c6d6}
+.pcard .em{grid-row:span 2;font-size:21px;line-height:1}
+.pcard .nm{font-size:13.5px;font-weight:600;line-height:1.3}
+.pcard .sb{font-size:11px;color:var(--mist2);line-height:1.35}
+.pcard[aria-checked="true"]{border-color:var(--teal);background:rgba(23,184,166,.07);box-shadow:0 0 0 1px var(--teal) inset}
+.s-in .primary{width:100%}
+.s-in .link{display:block;margin:10px auto 0}
+
+.caution{padding:22px 24px;border-radius:22px;border:1px solid var(--rule);background:rgba(255,255,255,.7)}
+.caution h2{margin:0 0 12px;font-size:14px;letter-spacing:.08em;color:var(--ink)}
+.caution ul{margin:0;padding-left:18px;columns:2 320px;column-gap:36px;font-size:13px;line-height:1.65;color:#344257}
+.caution li{break-inside:avoid;margin-bottom:8px}
+.caution li::marker{color:var(--coral)}
+.lfoot{margin:0;font-size:11.5px;color:var(--mist2)}
+@media (max-width:880px){.hero{grid-template-columns:1fr}#sig{aspect-ratio:4/3}}
+@media (max-width:420px){.personas{grid-template-columns:1fr}.card{padding:22px 18px}}
+
+/* ── 대화 화면 (기존 좋은 질문 페이지) ── */
+#field{position:fixed;inset:0;width:100%;height:100%;display:block}
+.stage{position:fixed;z-index:1;left:0;right:0;top:var(--vvt,0px);width:100%;height:var(--vvh,100vh);max-width:640px;margin:0 auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;gap:8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 8px;box-sizing:border-box;overflow:hidden}
+@supports (height:100dvh){.stage{height:var(--vvh,100dvh)}}
+.stage{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}.kb .stage{padding-bottom:8px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.brand2{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+.brand2 b{font-family:var(--display);font-weight:700;font-size:17px}
+.pchip{display:inline-flex;gap:6px;align-items:baseline;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--glass);font-size:12.5px;max-width:100%}
+.pchip small{color:var(--mist);font-size:11px}
+.right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.on-chat .lang{border-color:var(--line);background-color:var(--glass);color:var(--ink-d)}
+.on-chat .lang option{background:#0b1424;color:var(--ink-d)}
+.tool{background:none;border:1px solid transparent;color:var(--mist);font-size:12.5px;padding:6px 10px;border-radius:999px;cursor:pointer}
+.tool:hover{color:var(--ink-d);border-color:var(--line)}
+.center{min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin}
+.log{list-style:none;margin:auto 0 0;padding:10px 0;display:flex;flex-direction:column;gap:10px}
+.log li{max-width:88%;padding:12px 15px;border-radius:18px;line-height:1.75;font-size:15px;white-space:pre-wrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.log li.ai{align-self:flex-start;background:rgba(9,18,36,.76);border:1px solid var(--line);border-top-left-radius:6px}
+.log li.me{align-self:flex-end;background:rgba(240,109,117,.17);border:1px solid rgba(240,109,117,.36);border-top-right-radius:6px}
+.log li.sys{align-self:center;max-width:94%;background:rgba(9,18,36,.6);border:1px dashed var(--line);color:var(--mist);font-size:12.5px;text-align:center;line-height:1.6}
+.log li.typing{color:var(--mist)}
+.log li.sys details{margin-top:6px;text-align:left}.log li.sys summary{cursor:pointer;opacity:.8;text-align:center}
+.log li.sys details code{display:block;margin-top:4px;font-size:11px;line-height:1.5;word-break:break-all;opacity:.85}
+/* v3.3.12: 터치 기기에서는 움직이는 배경 위 블러를 끈다(매 프레임 블러를 다시 계산하는 부담). 대신 바탕을 진하게 해서 글이 잘 읽히게 */
+@media (pointer:coarse){
+  body .log li,body .cmd,body .dock{backdrop-filter:none;-webkit-backdrop-filter:none}   /* body를 붙여 뒤에 오는 .cmd·.dock 규칙보다 우선 */
+  body .log li.ai{background:rgba(9,18,36,.92)}body .log li.sys{background:rgba(9,18,36,.88)}body .log li.me{background:rgba(52,25,34,.94)}
+  body .cmd{background:rgba(9,18,36,.9)}body .dock{background:rgba(6,13,26,.94)}
+}
+.dock textarea.fs{field-sizing:content}
+.log li .retry{margin-left:8px;background:none;border:1px solid var(--line);color:var(--ink-d);border-radius:999px;padding:3px 10px;cursor:pointer;font-size:12px}
+.cmds{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.cmd{background:rgba(9,18,36,.6);border:1px solid var(--line);color:var(--ink-d);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.cmd:hover{border-color:rgba(207,226,251,.5)}
+.cmd:disabled{opacity:.45;cursor:default}
+.dock{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:8px 8px 8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.dock form{display:flex;align-items:flex-end;gap:8px}
+.dock textarea{width:100%;box-sizing:border-box;resize:none;background:transparent;border:0;color:var(--ink-d);font-size:16px;line-height:1.5;padding:9px 0;outline:none;max-height:140px}
+.dock textarea::placeholder{color:#6f84a0}
+.send{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--ice);color:var(--void);cursor:pointer;display:grid;place-items:center}
+.send:disabled{opacity:.4;cursor:default}
+.send svg{width:18px;height:18px}
+.stopb{background:var(--coral)}
+.foot{display:grid;gap:2px}
+.tools{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.tool.sound{border-color:var(--line)}
+.tool.sound[aria-pressed="true"]{color:var(--ink-d);border-color:rgba(23,184,166,.6)}
+.tool.sound .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px;opacity:.6}
+.tool.sound[aria-pressed="true"] .dot{background:var(--teal);opacity:1;animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.7);opacity:.5}}
+.fine{margin:0;text-align:center;font-size:10.5px;color:#6c809b;line-height:1.6;padding-bottom:2px}
+@media (prefers-reduced-motion:reduce){.tool.sound[aria-pressed="true"] .dot{animation:none}.fld input,.primary,.pcard{transition:none}}
+</style>
+
+<div class="landing" id="landing">
+  <header class="top">
+    <span class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#3e7fd0" stroke-opacity=".35" stroke-width="1.4"/><circle cx="16" cy="16" r="9" fill="none" stroke="#3e7fd0" stroke-opacity=".6" stroke-width="1.4"/><circle cx="16" cy="16" r="3.6" fill="#152033"/><circle cx="25.5" cy="9" r="2.6" fill="#17B8A6"/><circle cx="6.5" cy="22.5" r="2" fill="#F06D75"/></svg>
+      <b data-k="appName"></b>
+    </span>
+    <span><label class="sr" for="lang1" data-k="langLabel"></label><select class="lang" id="lang1"></select></span>
+  </header>
+
+  <main class="hero">
+    <section class="intro">
+      <p class="eyebrow" data-k="eyebrow"></p>
+      <h1 class="headline" data-k="headline"></h1>
+      <figure class="visual"><canvas id="sig" role="img"></canvas></figure>
+    </section>
+
+    <aside class="card" id="card" data-state="loading" aria-live="polite">
+      <div class="st s-loading"><p class="muted" data-k="loading"></p></div>
+      <div class="st s-unconf"><p class="notice" data-k="notConfigured"></p></div>
+      <div class="st s-out">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tLogin" aria-controls="fLogin" aria-selected="true" type="button" data-k="tabLogin"></button>
+          <button class="tab" role="tab" id="tSignup" aria-controls="fSignup" aria-selected="false" type="button" data-k="tabSignup"></button>
+        </div>
+        <form class="form" id="fLogin" role="tabpanel" aria-labelledby="tLogin" novalidate>
+          <fieldset id="fsLogin">
+            <div class="fld"><label for="liEmail" data-k="emailL"></label><input id="liEmail" type="email" autocomplete="email" inputmode="email" required></div>
+            <div class="fld"><label for="liPw" data-k="pwL"></label><input id="liPw" type="password" autocomplete="current-password" required></div>
+            <p class="err" id="liErr" role="alert"></p><p class="ok" id="liOk"></p>
+            <button class="primary" type="submit" data-k="loginBtn"></button>
+            <button class="link" type="button" id="forgot" data-k="forgot"></button>
+          </fieldset>
+        </form>
+        <form class="form" id="fSignup" role="tabpanel" aria-labelledby="tSignup" novalidate hidden>
+          <fieldset id="fsSignup">
+            <div class="fld"><label for="suName" data-k="nameL"></label><input id="suName" type="text" autocomplete="nickname" maxlength="40" required></div>
+            <div class="fld"><label for="suEmail" data-k="emailL"></label><input id="suEmail" type="email" autocomplete="email" inputmode="email" required></div>
+            <div class="fld"><label for="suPw"><span data-k="pwL"></span> <span class="hint" data-k="pwRule"></span></label><input id="suPw" type="password" autocomplete="new-password" minlength="8" required></div>
+            <div class="fld"><label for="suPw2" data-k="pw2L"></label><input id="suPw2" type="password" autocomplete="new-password" minlength="8" required></div>
+            <label class="agree"><input id="suAgree" type="checkbox"><span data-k="agreeL"></span></label>
+            <p class="err" id="suErr" role="alert"></p>
+            <button class="primary" type="submit" data-k="signupBtn"></button>
+          </fieldset>
+        </form>
+      </div>
+      <div class="st s-in">
+        <p class="hello" id="hello"></p>
+        <p class="muted" data-k="helloSub"></p>
+        <div class="personas" role="radiogroup" id="personas"></div>
+        <button class="primary" id="startBtn" type="button" data-k="start"></button>
+        <button class="link" id="logoutBtn" type="button" data-k="logout"></button>
+      </div>
+    </aside>
+  </main>
+
+  <section class="caution" aria-labelledby="cautionH"><h2 id="cautionH" data-k="cautionTitle"></h2><ul id="cautions"></ul></section>
+  <p class="lfoot" data-k="fine"></p>
+</div>
+
+<section id="chat" hidden>
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="stage">
+    <header class="bar">
+      <div class="brand2"><b data-k="appName"></b><span class="pchip"><small data-k="personaNow"></small><span id="pname"></span></span></div>
+      <div class="right">
+        <label class="sr" for="lang2" data-k="langLabel"></label><select class="lang" id="lang2"></select>
+        <button class="tool" id="homeBtn" type="button" data-k="home"></button>
+      </div>
+    </header>
+    <main class="center" id="center"><ol class="log" id="log" aria-live="polite"></ol></main>
+    <div class="cmds">
+      <button class="cmd" type="button" data-cmd="cmdWrap" data-k="cmdWrap"></button>
+      <button class="cmd" type="button" data-cmd="cmdNotes" data-k="cmdNotes"></button>
+      <button class="cmd" type="button" data-cmd="cmdEnd" data-k="cmdEnd"></button>
+    </div>
+    <section class="dock">
+      <form id="form" autocomplete="off">
+        <label class="sr" for="msg" data-k="inputPh"></label>
+        <textarea id="msg" rows="1"></textarea>
+        <button class="send" id="send" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        <button class="send stopb" id="stopb" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg></button>
+      </form>
+    </section>
+    <div class="foot">
+      <nav class="tools">
+        <button class="tool sound" id="soundBtn" type="button" aria-pressed="false"><span class="dot"></span><span id="soundLabel"></span></button>
+        <button class="tool" id="motionBtn" type="button" aria-pressed="false"><span id="motionLabel"></span></button>
+        <button class="tool" id="restartBtn" type="button" data-k="restart"></button>
+      </nav>
+      <p class="fine"><span data-k="privacy"></span> · <span data-k="safetyLine"></span></p>
+    </div>
+  </div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a),TAU=Math.PI*2;
+
+/* ───────── 물결 고리 장 (v3.3.5와 같음) ───────── */
+/* v3.3.12: 움직임 설정. 'still'=멈춤(정지 그림 1장), 'full'=움직임. 저장값이 없으면 MOTION_DEFAULT를 따른다.
+   MOTION_DEFAULT 'auto' = 기기의 '애니메이션 줄이기'(prefers-reduced-motion)를 따름. 'still'로 바꾸면 처음부터 멈춤(결정 대기). */
+const MOTION_DEFAULT='still';   // 사용자 결정(2026-11-02): 처음부터 멈춤
+const MOTION={
+  get(){let v='';try{v=localStorage.getItem('tc_motion')||''}catch(_){}return v==='still'||v==='full'?v:MOTION_DEFAULT},
+  still(){const v=this.get();return v==='still'||(v==='auto'&&matchMedia('(prefers-reduced-motion: reduce)').matches)},
+  set(v){try{localStorage.setItem('tc_motion',v)}catch(_){}}
+};
+const COARSE=matchMedia('(pointer: coarse)').matches;   // 터치 기기(폰·태블릿)
+const field=(()=>{
+  const cv=$('field'),ctx=cv.getContext('2d');
+  let reduce=MOTION.still();                    // v3.3.12: 움직임 설정에 따라 바뀐다
+  let quietUntil=0,focused=false,lastDraw=0,running=false;
+  const BLUE=[58,124,204],ICE=[186,220,255],COR=[240,109,117],TEAL=[23,184,166],PULSE=[120,178,246];
+  const K_H=[2,3,5,7],N=96,SP=.17,V=.04;
+  const STR={off:[-2.4,-.9,.5,1.9],al:[.22,.95,.55,.18],w:[.6,1.5,.9,.5],mix:[.05,.55,.28,.1]};
+  let W=0,H=0,cx=0,cy=0,tx=0,ty=0,Rm=200,RmT=200,T=0,last=0,speed=1,speedT=1,acc=0,teal=false,timer=null,count=0,tone=null;
+  const TONES={coral:{col:COR,str:.9},teal:{col:TEAL,str:.9},bright:{col:ICE,str:1.15}};
+  let rings=[],motes=[];
+  function ring(r,o={}){
+    return{r,x:o.x??null,y:o.y??null,v:o.v||V,col:o.col||null,str:o.str||1,life:o.life||0,t0:T,ev:!!o.ev,
+      ph:K_H.map(()=>rnd(0,TAU)),am:[rnd(.012,.024),rnd(.007,.015),rnd(.003,.008),rnd(.002,.005)],
+      w:K_H.map(()=>rnd(-.35,.35)),gaps:[rnd(0,TAU),Math.random()<.65?rnd(0,TAU):null],gw:rnd(.07,.17),sh:rnd(0,TAU)};
+  }
+  function mote(fresh){
+    return{r:fresh?rnd(.02,.12):rnd(.03,1.2),a:rnd(0,TAU),span:rnd(.04,.22),rot:rnd(-.05,.05),b:rnd(.25,.75),
+      w:Math.random()<.05?rnd(1.6,2.6):rnd(.4,1.1),tint:Math.random()<.015?COR:null,life:fresh?0:1};
+  }
+  function layout(){
+    const c=$('center').getBoundingClientRect();
+    tx=c.left+c.width/2;ty=c.top+c.height/2;
+    RmT=Math.max(140,Math.min(W*.5,c.height*.6,460));
+    if(!cx||reduce){cx=tx;cy=ty;Rm=RmT}
+    if(reduce)stillSoon();   // v3.3.13: 입력창 높이가 바뀔 때마다가 아니라 잠잠해진 뒤 한 번
+  }
+  let stillT=0;function stillSoon(){clearTimeout(stillT);stillT=setTimeout(()=>{if(reduce)draw(0)},180)}
+  function resize(){
+    const dpr=Math.min(COARSE?1.5:2,window.devicePixelRatio||1);   // v3.3.12: 터치 기기는 배율 상한 1.5
+    W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const n=Math.round(COARSE?Math.min(200,Math.max(120,W*H/3000)):Math.min(420,Math.max(180,W*H/1500)));   // v3.3.12: 터치 기기는 작은 호를 줄인다
+    while(motes.length<n)motes.push(mote(false));motes.length=n;
+    layout();
+  }
+  for(let r=.03;r<1.25;r+=SP)rings.push(ring(r));
+  const PRE={
+    user:{col:COR,v:.5,str:1.25,life:2.8},
+    answer:{col:ICE,v:.42,str:1,life:3},
+    pulse:{col:PULSE,v:.38,str:.75,life:3},
+    confirm:{col:TEAL,v:.32,str:1.7,life:4},
+    tap:{col:ICE,v:.3,str:.85,life:3}
+  };
+  function emit(kind,x,y){
+    if(reduce)return;const p=PRE[kind];if(!p)return;
+    const add=()=>rings.push(ring(.02,{...p,ev:true,x:x??null,y:y??null}));
+    if(kind==='confirm'){add();setTimeout(add,320);setTimeout(add,660)}else add();
+  }
+  function setMode(m){
+    clearInterval(timer);timer=null;
+    if(m==='think'){speedT=2.3;emit('pulse');timer=setInterval(()=>emit('pulse'),1000)}
+    else if(m==='rest')speedT=.4;else speedT=1;
+  }
+  function newLinks(){
+    teal=true;
+    motes.forEach(m=>{if(Math.random()<.08){m.tint=TEAL;m.b=Math.max(m.b,.7)}});
+    if(reduce)draw(0);
+  }
+  const paths=Array.from({length:8},()=>null);
+  function drawRing(g,ox,oy,water){
+    const base=g.r*Rm;
+    let env=Math.min(1,g.r/.07)*Math.max(0,Math.min(1,(1.25-g.r)/.42));
+    if(g.ev)env*=Math.max(0,1-(T-g.t0)/g.life);
+    env*=g.str;if(env<.02)return;
+    const rad=new Float32Array(N+1),lit=new Float32Array(N+1);
+    const sc=(.55+g.r*.9);
+    for(let i=0;i<=N;i++){
+      const th=i/N*TAU;let d=0;
+      for(let k=0;k<4;k++)d+=g.am[k]*sc*Math.sin(K_H[k]*th+g.ph[k]+g.w[k]*T);
+      rad[i]=base*(1+d)+water*Math.sin(th*2+T*.4+g.r*3);
+      let L=.32+.68*Math.pow(.5+.5*Math.sin(2*th+g.sh+T*.06),1.4);
+      for(const ga of g.gaps){if(ga==null)continue;let dd=Math.abs(((th-ga+Math.PI)%TAU+TAU)%TAU-Math.PI);if(dd<g.gw)L*=Math.pow(dd/g.gw,3)}
+      lit[i]=L;
+    }
+    const tint=g.col;
+    for(let j=0;j<4;j++){
+      const off=STR.off[j]*(.6+g.r),aw=STR.al[j]*env;
+      let r=BLUE[0]+(ICE[0]-BLUE[0])*STR.mix[j],gg=BLUE[1]+(ICE[1]-BLUE[1])*STR.mix[j],b=BLUE[2]+(ICE[2]-BLUE[2])*STR.mix[j];
+      if(tint){const m=g.ev?.85:.55;r=r*(1-m)+tint[0]*m;gg=gg*(1-m)+tint[1]*m;b=b*(1-m)+tint[2]*m}
+      for(let q=0;q<8;q++)paths[q]=null;
+      for(let i=0;i<N;i++){
+        const a=aw*(lit[i]+lit[i+1])/2;if(a<.03)continue;
+        const q=Math.min(7,Math.floor(a*8));
+        const p=paths[q]||(paths[q]=new Path2D());
+        const t0=i/N*TAU,t1=(i+1)/N*TAU,r0=rad[i]+off,r1=rad[i+1]+off;
+        p.moveTo(ox+Math.cos(t0)*r0,oy+Math.sin(t0)*r0);p.lineTo(ox+Math.cos(t1)*r1,oy+Math.sin(t1)*r1);
+      }
+      ctx.strokeStyle=`rgb(${r|0},${gg|0},${b|0})`;ctx.lineWidth=STR.w[j]*(g.ev?1.5:1)*(.75+g.r*.5);
+      for(let q=0;q<8;q++){if(!paths[q])continue;ctx.globalAlpha=Math.min(1,(q+.5)/8);ctx.stroke(paths[q])}
+    }
+    ctx.globalAlpha=1;
+  }
+  function draw(dt){
+    ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+    ctx.fillStyle='#02050b';ctx.fillRect(0,0,W,H);
+    const sx=cx+Math.sin(T*.21)*3,sy=cy+Math.cos(T*.17)*3;
+    const gl=ctx.createRadialGradient(sx,sy,0,sx,sy,Rm*.7);
+    gl.addColorStop(0,'rgba(40,90,165,.20)');gl.addColorStop(.6,'rgba(14,34,70,.07)');gl.addColorStop(1,'rgba(2,5,11,0)');
+    ctx.fillStyle=gl;ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+    const water=Rm*.006*(1+.5*Math.sin(T*.33));
+    if(!reduce){
+      for(const g of rings)g.r+=g.v*dt*(g.ev?1:speed);
+      acc+=V*dt*speed;
+      while(acc>=SP){acc-=SP;count++;rings.push(ring(.0,tone?tone:(teal&&count%3===0?{col:TEAL,str:.85}:{})))}
+      rings=rings.filter(g=>g.r<1.3&&(!g.ev||T-g.t0<g.life));
+    }
+    for(const g of rings)drawRing(g,g.x??sx,g.y??sy,water);
+    const fronts=[];for(const g of rings)if(g.ev){const amp=g.str*Math.max(0,1-(T-g.t0)/g.life);if(amp>.02)fronts.push({x:g.x??sx,y:g.y??sy,f:g.r*Rm,amp,col:g.col})}
+    for(const m of motes){
+      if(!reduce){m.r+=V*dt*speed*(.9+m.r*.4);m.a+=m.rot*dt*speed;if(m.life<1)m.life=Math.min(1,m.life+dt*.7);if(m.r>1.3){const t=m.tint;Object.assign(m,mote(true));m.tint=t}}
+      const rr=m.r*Rm,am=m.a+m.span/2;
+      let gain=0;
+      if(fronts.length){const mx=sx+Math.cos(am)*rr,my=sy+Math.sin(am)*rr;for(const f of fronts){const q=(Math.hypot(mx-f.x,my-f.y)-f.f)/26;if(q>-3&&q<3)gain+=Math.exp(-q*q)*f.amp}}
+      const al=Math.min(1,m.b*.55*Math.min(1,m.r/.1)*Math.max(0,Math.min(1,(1.3-m.r)/.35))*m.life+gain*.5);
+      if(al<.02)continue;
+      const c=m.tint||ICE;
+      ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},${al.toFixed(3)})`;ctx.lineWidth=m.w*(1+gain*.5);
+      ctx.beginPath();ctx.arc(sx,sy,rr+gain*8,m.a,m.a+Math.min(.9,m.span*(1.2-m.r*.4)));ctx.stroke();
+    }
+  }
+  function frame(now){
+    if(reduce){running=false;return}
+    requestAnimationFrame(frame);
+    // v3.3.12: 글을 치는 동안(마지막 입력 뒤 1.2초)은 그리지 않고, 입력창에 커서가 있으면 초당 약 15번만 그린다
+    if(now<quietUntil)return;
+    if(focused){   // v3.3.13: 입력창에 커서가 있으면 배경은 멈춘다. 답을 기다리는 중이거나 파문이 살아 있을 때만 초당 10번 이하
+      if(speedT<2&&!rings.some(g=>g.ev))return;
+      if(now-lastDraw<100)return;
+    }
+    if(inputPending())return;   // 브라우저가 키 입력을 기다리고 있으면 그리지 않는다
+    const dt=Math.min(.08,(now-last)/1000);last=now;lastDraw=now;T+=dt;
+    speed+=(speedT-speed)*Math.min(1,dt*1.5);
+    cx+=(tx-cx)*Math.min(1,dt*2);cy+=(ty-cy)*Math.min(1,dt*2);Rm+=(RmT-Rm)*Math.min(1,dt*2);
+    draw(dt);
+  }
+  const inputPending=()=>{try{return !!(navigator.scheduling&&navigator.scheduling.isInputPending&&navigator.scheduling.isInputPending())}catch(_){return false}};
+  function startLoop(){if(running||reduce)return;running=true;requestAnimationFrame(t=>{last=t;frame(t)})}
+  function setStill(on){reduce=!!on;if(reduce){cx=tx;cy=ty;Rm=RmT;draw(0)}else startLoop()}
+  const typing=()=>{quietUntil=performance.now()+1500};
+  const setFocus=f=>{focused=!!f};
+  addEventListener('resize',resize);
+  if('ResizeObserver' in window)new ResizeObserver(layout).observe($('center'));
+  resize();
+  if(reduce){T=8;draw(0)}else startLoop();
+  // 맵 단계마다 새로 생기는 고리 색을 바꾸고, 바뀔 때 그 색 파문을 한 번 보낸다
+  function setTone(t){
+    const n=TONES[t]||null;if(n===tone)return;tone=n;
+    if(!reduce&&n)rings.push(ring(.02,{col:n.col,v:.4,str:1.2,life:3,ev:true}));
+  }
+  return{emit,setMode,newLinks,layout,setTone,setStill,typing,setFocus};
+})();
+
+/* ───────── 잔잔한 소리 (v3.3.5와 같음, 언어와 무관) ───────── */
+const sound=(()=>{
+  const PENTA=[146.83,185.0,220.0,246.94,293.66,329.63,369.99,440.0];
+  let ac=null,master=null,echo=null,timers=[],on=false;
+  function later(fn,ms){timers.push(setTimeout(fn,ms))}
+  function brown(sec){
+    const n=Math.floor(ac.sampleRate*sec),buf=ac.createBuffer(2,n,ac.sampleRate);
+    for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);let l=0;for(let i=0;i<n;i++){l=(l+.02*(Math.random()*2-1))/1.02;d[i]=l*3.2}}
+    return buf;
+  }
+  function bed(pan){
+    const src=ac.createBufferSource();src.buffer=brown(rnd(11,17));src.loop=true;
+    const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=500;f.Q.value=.3;
+    const g=ac.createGain();g.gain.value=.08;
+    const p=ac.createStereoPanner?ac.createStereoPanner():null;
+    src.connect(f).connect(g);if(p){p.pan.value=pan;g.connect(p).connect(master)}else g.connect(master);
+    src.start();
+    (function wave(){
+      if(!ac)return;
+      if(document.hidden){later(wave,1500);return}
+      const now=ac.currentTime,up=rnd(2.4,5.2),down=rnd(3.4,7.5),peak=rnd(.12,.28),low=rnd(.04,.09),fc=rnd(380,950);
+      g.gain.cancelScheduledValues(now);g.gain.setValueAtTime(g.gain.value,now);
+      g.gain.linearRampToValueAtTime(peak,now+up);g.gain.linearRampToValueAtTime(low,now+up+down);
+      f.frequency.cancelScheduledValues(now);f.frequency.setValueAtTime(f.frequency.value,now);
+      f.frequency.linearRampToValueAtTime(fc,now+up);f.frequency.linearRampToValueAtTime(fc*.55,now+up+down);
+      later(wave,(up+down-rnd(0,1.6))*1000);
+    })();
+  }
+  function tone(){
+    if(!ac)return;
+    if(document.hidden){later(tone,1500);return}
+    const now=ac.currentTime,fr=PENTA[Math.floor(Math.random()*PENTA.length)]*(Math.random()<.2?.5:1);
+    const att=rnd(1.8,3.6),hold=rnd(.4,2),rel=rnd(5,9),pk=rnd(.022,.045),end=now+att+hold+rel+.1;
+    const o1=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),g2=ac.createGain(),lp=ac.createBiquadFilter();
+    o1.type='sine';o1.frequency.value=fr;o2.type='triangle';o2.frequency.value=fr*1.003;g2.gain.value=.3;
+    lp.type='lowpass';lp.frequency.value=1500;
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(pk,now+att);g.gain.setValueAtTime(pk,now+att+hold);g.gain.exponentialRampToValueAtTime(.0001,now+att+hold+rel);
+    o1.connect(g);o2.connect(g2).connect(g);g.connect(lp);lp.connect(master);lp.connect(echo);
+    o1.start(now);o2.start(now);o1.stop(end);o2.stop(end);
+    later(tone,rnd(2.8,8.5)*1000);
+  }
+  function start(){
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    master=ac.createGain();master.gain.value=0;
+    const comp=ac.createDynamicsCompressor();master.connect(comp).connect(ac.destination);
+    echo=ac.createDelay(2);echo.delayTime.value=.53;
+    const fb=ac.createGain();fb.gain.value=.36;const elp=ac.createBiquadFilter();elp.type='lowpass';elp.frequency.value=1300;
+    const wet=ac.createGain();wet.gain.value=.5;
+    echo.connect(elp).connect(fb).connect(echo);elp.connect(wet).connect(master);
+    bed(-.4);bed(.4);later(tone,1200);
+    master.gain.setTargetAtTime(.55,ac.currentTime,1.6);
+    on=true;
+  }
+  function stop(){
+    if(!ac)return;const a=ac,m=master;
+    timers.forEach(clearTimeout);timers=[];ac=null;on=false;
+    m.gain.setTargetAtTime(0,a.currentTime,.4);setTimeout(()=>a.close().catch(()=>{}),1800);
+  }
+  document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume()});
+  addEventListener('pagehide',stop);
+  return{toggle(){if(on){stop();return false}try{start();return true}catch(e){return false}},isOn:()=>on};
+})();
+
+/* ───────── 첫 화면 그림: 동심원 위에서 신호들이 연결된다 ─────────
+   옅은 동심원(기존 좋은 질문 페이지의 물결) 위로, 가장자리에서 뻗은 가지들이 가운데로 모인다.
+   신호는 가지를 따라 코랄(기존 신호)로 흐르다가, 다른 가지와 이어진 점선을 건너면 청록(새 연결)으로 바뀐다. */
+const sig=(()=>{
+  const cv=$('sig'),ctx=cv.getContext('2d');
+  let reduce=MOTION.still(),running=false,quietUntil=0;   // v3.3.12
+  const INK='21,32,51',COR='240,109,117',TEAL='23,184,166',BLUE='62,127,208';
+  let W=0,H=0,br=[],links=[],pulses=[],T=0,last=0,acc=0;
+  function wander(x,y,a,len,steps,seed){
+    const pts=[[x,y]];let ang=a;const st=len/steps;
+    for(let i=0;i<steps;i++){ang+=Math.sin(seed+i*.55)*.16+Math.sin(seed*1.7+i*.23)*.1;x+=Math.cos(ang)*st;y+=Math.sin(ang)*st;pts.push([x,y])}
+    return pts;
+  }
+  function build(){
+    br=[];links=[];pulses=[];
+    const m=Math.min(W,H),n=15;
+    for(let i=0;i<n;i++){
+      const th=i/n*TAU+rnd(-.15,.15),rr=rnd(.84,.98);
+      const x=W/2+Math.cos(th)*W*.48*rr,y=H/2+Math.sin(th)*H*.47*rr;
+      const a=th+Math.PI+rnd(-.45,.45),len=rnd(.3,.44)*Math.hypot(W,H)*.62,seed=rnd(0,100);
+      const pts=wander(x,y,a,len,22,seed);br.push({pts,w:rnd(1.6,2.4)});
+      if(Math.random()<.45){const k=Math.floor(pts.length*rnd(.35,.65)),p=pts[k];br.push({pts:wander(p[0],p[1],a+rnd(-.9,.9),len*rnd(.35,.55),12,seed+9),w:1.3,sub:true})}
+    }
+    const tips=br.map((b,i)=>({i,p:b.pts[b.pts.length-1]})).filter(t=>!br[t.i].sub);
+    for(let a=0;a<tips.length;a++)for(let b=a+1;b<tips.length;b++){
+      const d=Math.hypot(tips[a].p[0]-tips[b].p[0],tips[a].p[1]-tips[b].p[1]);
+      if(d<m*.34&&d>m*.04)links.push({a:tips[a].i,b:tips[b].i,d,glow:0});
+    }
+    links.sort((x,y)=>x.d-y.d);links=links.slice(0,Math.max(5,Math.round(tips.length*.8)));
+  }
+  function curve(l){const A=br[l.a].pts.at(-1),B=br[l.b].pts.at(-1);return[A,[(A[0]+B[0])/2-(B[1]-A[1])*.18,(A[1]+B[1])/2+(B[0]-A[0])*.18],B]}
+  const qpt=(c,t)=>{const u=1-t;return[u*u*c[0][0]+2*u*t*c[1][0]+t*t*c[2][0],u*u*c[0][1]+2*u*t*c[1][1]+t*t*c[2][1]]};
+  function along(p,t){const n=p.length-1,f=Math.max(0,Math.min(1,t))*n,i=Math.min(n-1,Math.floor(f)),r=f-i;return[p[i][0]+(p[i+1][0]-p[i][0])*r,p[i][1]+(p[i+1][1]-p[i][1])*r]}
+  function pos(pl){
+    const l=pl.l,A=br[pl.rev?l.b:l.a],B=br[pl.rev?l.a:l.b],c=curve(l),cc=pl.rev?[c[2],c[1],c[0]]:c;
+    if(pl.t<1)return[along(A.pts,pl.t),0];if(pl.t<2)return[qpt(cc,pl.t-1),1];return[along(B.pts,3-pl.t),2];
+  }
+  function draw(dt){
+    ctx.clearRect(0,0,W,H);ctx.lineCap='round';ctx.lineJoin='round';
+    const cx=W/2,cy=H/2,m=Math.min(W,H);
+    for(let i=0;i<6;i++){                                   // 동심원 (물결)
+      const ph=((T*.045+i/6)%1),r=m*(.08+ph*.62);
+      const a=Math.sin(ph*Math.PI)*.16;
+      ctx.strokeStyle=`rgba(${BLUE},${a.toFixed(3)})`;ctx.lineWidth=1.2;ctx.beginPath();
+      for(let k=0;k<=72;k++){const th=k/72*TAU,w=r*(1+Math.sin(th*3+i+T*.3)*.012);k?ctx.lineTo(cx+Math.cos(th)*w,cy+Math.sin(th)*w):ctx.moveTo(cx+w,cy)}
+      ctx.stroke();
+    }
+    for(const l of links){
+      l.glow=Math.max(0,l.glow-dt*.5);const c=curve(l);
+      ctx.setLineDash([3,6]);ctx.strokeStyle=`rgba(${TEAL},${reduce?.45:(.18+l.glow*.65).toFixed(3)})`;ctx.lineWidth=1.3+l.glow*1.4;
+      ctx.beginPath();ctx.moveTo(c[0][0],c[0][1]);ctx.quadraticCurveTo(c[1][0],c[1][1],c[2][0],c[2][1]);ctx.stroke();ctx.setLineDash([]);
+    }
+    for(const b of br){
+      ctx.strokeStyle=`rgba(${INK},${b.sub?.42:.74})`;ctx.lineWidth=b.w;ctx.beginPath();
+      b.pts.forEach((q,i)=>{const w=reduce?0:Math.sin(T*.7+i*.45+q[0]*.01)*.7;i?ctx.lineTo(q[0],q[1]+w):ctx.moveTo(q[0],q[1]+w)});ctx.stroke();
+    }
+    for(const b of br){if(b.sub)continue;const q=b.pts.at(-1);ctx.fillStyle='#fff';ctx.strokeStyle=`rgba(${INK},.85)`;ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(q[0],q[1],3.2,0,TAU);ctx.fill();ctx.stroke()}
+    for(const pl of pulses){
+      pl.t+=dt*(pl.t>=1&&pl.t<2?.85:.5);const[pt,ph]=pos(pl);if(ph===1)pl.l.glow=1;
+      const col=ph===0?COR:TEAL,g=ctx.createRadialGradient(pt[0],pt[1],0,pt[0],pt[1],14);
+      g.addColorStop(0,`rgba(${col},.85)`);g.addColorStop(1,`rgba(${col},0)`);ctx.fillStyle=g;ctx.beginPath();ctx.arc(pt[0],pt[1],14,0,TAU);ctx.fill();
+      ctx.fillStyle=`rgb(${col})`;ctx.beginPath();ctx.arc(pt[0],pt[1],2.9,0,TAU);ctx.fill();
+    }
+    pulses=pulses.filter(p=>p.t<3);
+  }
+  function resize(){
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;
+    if(Math.abs(w-W)<2&&Math.abs(h-H)<2)return;
+    W=w;H=h;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);build();draw(0);
+  }
+  function frame(now){
+    if(reduce){running=false;return}
+    if(now<quietUntil){requestAnimationFrame(frame);return}   // v3.3.12: 로그인 칸에 글을 치는 동안 쉼
+    const dt=Math.min(.05,(now-last)/1000);last=now;
+    if(!$('landing').hidden&&W){
+      T+=dt;acc+=dt;if(acc>.9&&pulses.length<6&&links.length){acc=0;pulses.push({l:links[Math.floor(Math.random()*links.length)],t:0,rev:Math.random()<.5})}
+      draw(dt);
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener('resize',resize);
+  if('ResizeObserver' in window)new ResizeObserver(resize).observe(cv);
+  resize();
+  if(!reduce){running=true;requestAnimationFrame(t=>{last=t;frame(t)})}
+  function setStill(on){reduce=!!on;if(reduce){if(W)draw(0)}else if(!running){running=true;requestAnimationFrame(t=>{last=t;frame(t)})}}
+  const typing=()=>{quietUntil=performance.now()+1200};
+  return{resize,setStill,typing};
+})();
+
+/* ───────── 문구 카탈로그 ───────── */
+const CATALOGS={"ko":{"lang":"ko","locale":"ko-KR","version":"3.3.9-proposal","draft":"대화 시안 v3.3.9 (Firebase sign-in + Gemini) 화면 문구. 모델 프롬프트는 내면 명탐정 v3.0 PDF 원문을 그대로 쓰며 이 파일에 없다.","approved":["headline"],"strings":{"appName":"생각의 연결","langLabel":"언어","headline":"좋은 질문을 통해서 연결 신호를 찾고, 도움이 되지 않는 신호를 전환한다.","signalAlt":"신호들이 서로 연결되는 그림","loginTitle":"로그인","pwL":"비밀번호","personaL":"페르소나 선택","start":"시작하기","cautionTitle":"주의사항","cautions":["이 서비스는 의료나 상담을 목적으로 하지 않습니다. 진단·치료·처방을 하지 않으며, 전문 상담이나 진료를 대신하지 않습니다.","AI가 건네는 질문과 가설은 틀릴 수 있습니다. 맞지 않으면 넘기거나 바로잡아 주세요.","위급한 상황이라면 대화를 멈추고 바로 도움을 요청하세요. 한국: 자살예방상담전화 109(24시간), 긴급 119·112. 다른 나라에서는 그 나라의 긴급번호로 연락하세요.","대화 내용은 답을 만들기 위해 Google의 Gemini API로 전달됩니다. 무료 등급에서는 Google이 이 내용을 제품 개선에 사용할 수 있습니다. 이 페이지는 대화를 저장하지 않으며, 창을 닫으면 대화가 사라집니다.","주민등록번호, 주소, 비밀번호, 계좌번호 같은 개인정보는 적지 마세요.","종교·역사 인물 페르소나는 그 인물 본인이 아니라, 가르침을 참고해 이야기를 듣는 안내자입니다.","청소년이라면 믿을 수 있는 어른이나 학교 상담실과도 함께 이야기해 보세요.","무료 사용량에는 하루 한도가 있어서, 한도를 넘으면 그날은 대화가 멈출 수 있습니다.","계정에는 이름과 이메일만 저장되며(Google Firebase), 대화 내용은 저장하지 않습니다."],"personas":["🕵️ 내면 명탐정 (기본)","👵 외할머니","👴 할아버지","🤝 베스트 프렌드","🔍 셜록 홈즈","🩺 왓슨 박사","🪷 부처님 (붓다의 가르침을 품은 안내자)","✝️ 예수님 (예수의 가르침을 품은 안내자)","🕊️ 간디 (간디의 삶에서 영감을 받은 안내자)","🌙 이슬람 전통의 지혜 안내자","🏛️ 소크라테스 (소크라테스식 대화를 이어받은 안내자)","🔮 10년 후의 나","📻 심야 라디오 DJ","🗼 등대지기","📚 오래된 은사님","✍️ 직접 정하기 (대화에서 설명)"],"personaNow":"대화 상대","inputPh":"편하게 적어 주세요.","send":"보내기","stop":"멈추기","thinking":"생각하는 중…","cmdWrap":"정리해줘","cmdNotes":"단서 노트 보여줘","cmdEnd":"오늘은 그만","home":"첫 화면","restart":"새로 시작","privacy":"대화는 답을 만들기 위해 Google Gemini로 전달되고(무료 등급은 제품 개선에 쓰일 수 있음), 이 페이지에는 저장되지 않아요.","safetyLine":"위급하면 109(한국 자살예방상담전화)·119, 또는 지금 있는 나라의 긴급번호로 연락하세요.","refused":"이 내용에는 답이 나오지 않았어요. 표현을 바꿔 다시 보내 주세요.","failed":"연결이 끊겼어요. 다시 보낼 수 있어요.","retry":"다시 보내기","truncated":"답이 길어서 중간에 끊겼어요.","soundOn":"잔잔한 소리 켜기","soundOff":"소리 끄기","fine":"시안 v3.3.9 · 내면 명탐정 v3.0 프롬프트 · Gemini · Firebase 로그인","quota":"오늘 무료 사용량을 다 썼거나 요청이 몰렸어요. 조금 뒤나 내일 다시 보내 주세요.","eyebrow":"좋은 질문 · 1단계","tabLogin":"로그인","tabSignup":"회원가입","nameL":"이름 (닉네임)","emailL":"이메일","pw2L":"비밀번호 확인","pwRule":"8자 이상","agreeL":"주의사항을 읽었고, 대화 내용이 답을 만들기 위해 Google Gemini로 전달되는 것에 동의합니다.","signupBtn":"가입하기","loginBtn":"로그인","forgot":"비밀번호를 잊으셨나요?","logout":"로그아웃","hello":"안녕하세요, {name}님","helloSub":"오늘 대화할 상대를 골라 주세요.","resetSent":"비밀번호 재설정 메일을 보냈어요. 메일함을 확인해 주세요.","verifySent":"가입했어요. 확인 메일을 보냈어요.","loading":"확인하는 중…","notConfigured":"아직 로그인 서버(Firebase)가 연결되지 않은 시안이에요. 관리자가 설정을 넣으면 가입과 로그인이 열려요.","e_email":"이메일 형식을 확인해 주세요.","e_inuse":"이미 가입된 이메일이에요. 로그인해 주세요.","e_weak":"비밀번호는 8자 이상으로 해 주세요.","e_mismatch":"비밀번호 두 칸이 서로 달라요.","e_cred":"이메일 또는 비밀번호가 맞지 않아요.","e_many":"시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.","e_net":"인터넷 연결을 확인해 주세요.","e_agree":"주의사항 동의가 필요해요.","e_name":"이름을 적어 주세요.","e_generic":"잠시 문제가 생겼어요. 다시 시도해 주세요.","setupAI":"AI 연결 설정(App Check 등)을 확인해야 해요. 관리자에게 알려 주세요.","needLogin":"로그인한 뒤에 대화할 수 있어요."}},"en":{"lang":"en","locale":"en","version":"3.3.9-proposal","draft":"Proposal draft for the chat prototype v3.3.9 (Firebase sign-in + Gemini) UI. Not approved. Native review needed. The model prompt is the Inner Detective v3.0 PDF text, unchanged, and is not in this file.","approved":[],"strings":{"appName":"Thought Connection","langLabel":"Language","headline":"Find the connected signals through good questions, and shift the ones that don't help.","signalAlt":"An image of signals connecting to each other","loginTitle":"Sign in","pwL":"Password","personaL":"Choose a persona","start":"Start","cautionTitle":"Please note","cautions":["This is not a medical or counselling service. It does not diagnose, treat or prescribe, and it doesn't replace professional counselling or care.","The questions and hypotheses the AI offers can be wrong. If something doesn't fit, skip it or correct it.","If you're in danger, stop the chat and get help right away. Contact the emergency number for the country you're in.","What you write is sent to Google's Gemini API to produce replies. On the free tier, Google may use this content to improve its products. This page doesn't save the conversation; it disappears when you close the window.","Don't share personal details such as ID numbers, your address, passwords or bank details.","Religious and historical personas are not those people. They are guides that draw on their teachings while listening to you.","If you're a teenager, please also talk with an adult you trust or a school counsellor.","Free usage has a daily limit. Once it's reached, the chat may stop working for the rest of the day.","Your account stores only your name and email (in Google Firebase). Conversations are not saved."],"personas":["🕵️ Inner Detective (default)","👵 Grandma","👴 Grandpa","🤝 Best Friend","🔍 Sherlock Holmes","🩺 Dr. Watson","🪷 The Buddha (a guide inspired by his teaching)","✝️ Jesus (a guide inspired by his teaching)","🕊️ Gandhi (a guide inspired by his life)","🌙 A guide to wisdom from the Islamic tradition","🏛️ Socrates (a guide in the Socratic tradition)","🔮 Me, ten years from now","📻 Late-night radio DJ","🗼 Lighthouse keeper","📚 An old teacher of mine","✍️ My own (describe it in the chat)"],"personaNow":"Talking with","inputPh":"Write freely.","send":"Send","stop":"Stop","thinking":"Thinking…","cmdWrap":"Sum it up","cmdNotes":"Show my clue notes","cmdEnd":"That's enough for today","home":"Home","restart":"Start over","privacy":"Messages go to Google Gemini to produce replies (on the free tier they may be used to improve Google's products). This page doesn't save them.","safetyLine":"If you're in danger, call the emergency number for the country you're in.","refused":"No reply came back for this. Try saying it differently.","failed":"The connection dropped. You can send it again.","retry":"Send again","truncated":"The reply was cut short because it was long.","soundOn":"Turn on calm sound","soundOff":"Turn off sound","fine":"Prototype v3.3.9 · Inner Detective v3.0 prompt · Gemini · Firebase sign-in","quota":"Today's free usage is used up, or there are too many requests. Try again later or tomorrow.","eyebrow":"Good Question · Step 1","tabLogin":"Sign in","tabSignup":"Sign up","nameL":"Name (nickname)","emailL":"Email","pw2L":"Confirm password","pwRule":"At least 8 characters","agreeL":"I have read the notes below and agree that my messages are sent to Google Gemini to produce replies.","signupBtn":"Create account","loginBtn":"Sign in","forgot":"Forgot your password?","logout":"Sign out","hello":"Hi, {name}","helloSub":"Choose who you would like to talk with today.","resetSent":"We sent a password reset email. Please check your inbox.","verifySent":"You're signed up. We sent a confirmation email.","loading":"Checking…","notConfigured":"This prototype isn't connected to a sign-in server (Firebase) yet. Sign-up and sign-in will open once an admin adds the settings.","e_email":"Please check the email address.","e_inuse":"This email is already registered. Please sign in.","e_weak":"Use a password of at least 8 characters.","e_mismatch":"The two passwords don't match.","e_cred":"The email or password doesn't match.","e_many":"Too many attempts. Please try again in a moment.","e_net":"Please check your internet connection.","e_agree":"Please agree to the notes first.","e_name":"Please enter a name.","e_generic":"Something went wrong. Please try again.","setupAI":"The AI connection settings (App Check, etc.) need checking. Please tell the admin.","needLogin":"Please sign in to start a conversation."}},"es-419":{"lang":"es-419","locale":"es-419","version":"3.3.9-proposal","draft":"Proposal draft for the chat prototype v3.3.9 (Firebase sign-in + Gemini) UI. Not approved. Native review needed. The model prompt is the Inner Detective v3.0 PDF text, unchanged, and is not in this file.","approved":[],"strings":{"appName":"Conexión de pensamientos","langLabel":"Idioma","headline":"Con buenas preguntas, encontramos las señales conectadas y cambiamos las que no ayudan.","signalAlt":"Imagen de señales que se conectan entre sí","loginTitle":"Iniciar sesión","pwL":"Contraseña","personaL":"Elige un personaje","start":"Empezar","cautionTitle":"Antes de empezar","cautions":["Este servicio no tiene fines médicos ni de orientación psicológica. No diagnostica, no trata ni receta, y no reemplaza la atención profesional.","Las preguntas e hipótesis de la IA pueden estar equivocadas. Si algo no encaja, sáltalo o corrígelo.","Si estás en peligro, deja la conversación y pide ayuda de inmediato. Llama al número de emergencias del país donde estés.","Lo que escribes se envía a la API de Gemini de Google para generar las respuestas. En el nivel gratuito, Google puede usar este contenido para mejorar sus productos. Esta página no guarda la conversación; desaparece al cerrar la ventana.","No escribas datos personales como tu número de documento, dirección, contraseñas o datos bancarios.","Los personajes religiosos o históricos no son esas personas. Son guías que se inspiran en sus enseñanzas para escucharte.","Si eres adolescente, habla también con un adulto de confianza o con el orientador de tu escuela.","El uso gratuito tiene un límite diario. Si se alcanza, el chat puede dejar de funcionar el resto del día.","Tu cuenta guarda solo tu nombre y correo (en Google Firebase). Las conversaciones no se guardan."],"personas":["🕵️ Detective interior (predeterminado)","👵 Abuela","👴 Abuelo","🤝 Mejor amigo/amiga","🔍 Sherlock Holmes","🩺 Doctor Watson","🪷 Buda (guía inspirada en su enseñanza)","✝️ Jesús (guía inspirada en su enseñanza)","🕊️ Gandhi (guía inspirada en su vida)","🌙 Guía de la sabiduría de la tradición islámica","🏛️ Sócrates (guía en la tradición socrática)","🔮 Yo dentro de diez años","📻 DJ de radio nocturna","🗼 Guardián del faro","📚 Un antiguo maestro","✍️ Uno propio (descríbelo en el chat)"],"personaNow":"Hablas con","inputPh":"Escribe con calma.","send":"Enviar","stop":"Detener","thinking":"Pensando…","cmdWrap":"Resume lo hablado","cmdNotes":"Muéstrame mis pistas","cmdEnd":"Por hoy, suficiente","home":"Inicio","restart":"Empezar de nuevo","privacy":"Los mensajes se envían a Google Gemini para generar respuestas (en el nivel gratuito pueden usarse para mejorar sus productos). Esta página no los guarda.","safetyLine":"Si estás en peligro, llama al número de emergencias del país donde estés.","refused":"No hubo respuesta para esto. Prueba a decirlo de otra forma.","failed":"Se cortó la conexión. Puedes enviarlo otra vez.","retry":"Enviar de nuevo","truncated":"La respuesta se cortó porque era larga.","soundOn":"Activar sonido tranquilo","soundOff":"Apagar sonido","fine":"Maqueta v3.3.9 · prompt Detective interior v3.0 · Gemini · inicio de sesión con Firebase","quota":"Se agotó el uso gratuito de hoy o hay demasiadas solicitudes. Inténtalo más tarde o mañana.","eyebrow":"Buena pregunta · Paso 1","tabLogin":"Iniciar sesión","tabSignup":"Crear cuenta","nameL":"Nombre (apodo)","emailL":"Correo electrónico","pw2L":"Confirmar contraseña","pwRule":"Mínimo 8 caracteres","agreeL":"Leí los avisos y acepto que mis mensajes se envíen a Google Gemini para generar las respuestas.","signupBtn":"Crear cuenta","loginBtn":"Iniciar sesión","forgot":"¿Olvidaste tu contraseña?","logout":"Cerrar sesión","hello":"Hola, {name}","helloSub":"Elige con quién quieres hablar hoy.","resetSent":"Te enviamos un correo para restablecer la contraseña. Revisa tu bandeja de entrada.","verifySent":"Listo, ya tienes cuenta. Te enviamos un correo de confirmación.","loading":"Verificando…","notConfigured":"Esta maqueta todavía no está conectada a un servidor de inicio de sesión (Firebase). El registro y el inicio de sesión se abrirán cuando un administrador agregue la configuración.","e_email":"Revisa el correo electrónico.","e_inuse":"Este correo ya está registrado. Inicia sesión.","e_weak":"Usa una contraseña de al menos 8 caracteres.","e_mismatch":"Las dos contraseñas no coinciden.","e_cred":"El correo o la contraseña no coinciden.","e_many":"Demasiados intentos. Inténtalo de nuevo en un momento.","e_net":"Revisa tu conexión a internet.","e_agree":"Primero acepta los avisos.","e_name":"Escribe un nombre.","e_generic":"Algo salió mal. Inténtalo de nuevo.","setupAI":"Hay que revisar la configuración de la IA (App Check, etc.). Avísale al administrador.","needLogin":"Inicia sesión para empezar una conversación."}},"hi":{"lang":"hi","locale":"hi-IN","version":"3.3.9-proposal","draft":"Proposal draft for the chat prototype v3.3.9 (Firebase sign-in + Gemini) UI. Not approved. Native review needed. The model prompt is the Inner Detective v3.0 PDF text, unchanged, and is not in this file.","approved":[],"strings":{"appName":"विचारों का जुड़ाव","langLabel":"भाषा","headline":"अच्छे सवालों से जुड़े हुए संकेत ढूँढो, और जो संकेत मदद नहीं करते उन्हें बदलो।","signalAlt":"आपस में जुड़ते संकेतों की तस्वीर","loginTitle":"लॉग इन","pwL":"पासवर्ड","personaL":"पर्सोना चुनो","start":"शुरू करो","cautionTitle":"ध्यान दें","cautions":["यह सेवा इलाज या काउंसलिंग के लिए नहीं है। यह न बीमारी पहचानती है, न इलाज करती है, न दवा बताती है, और पेशेवर मदद की जगह नहीं लेती।","AI के सवाल और अनुमान ग़लत हो सकते हैं। जो बात सही न लगे, उसे छोड़ दो या सुधार दो।","अगर ख़तरा हो, तो बातचीत रोककर तुरंत मदद लो। जिस देश में हो, वहाँ के आपातकालीन नंबर पर कॉल करो।","जो लिखते हो, वह जवाब बनाने के लिए Google के Gemini API को भेजा जाता है। मुफ़्त स्तर पर Google इस सामग्री का इस्तेमाल अपने उत्पाद बेहतर बनाने में कर सकता है। यह पेज बातचीत सेव नहीं करता; विंडो बंद करते ही बातचीत मिट जाती है।","आधार नंबर, पता, पासवर्ड या बैंक की जानकारी जैसी निजी बातें मत लिखो।","धार्मिक या ऐतिहासिक पर्सोना वे लोग ख़ुद नहीं हैं। वे उनकी शिक्षाओं से प्रेरित होकर बात सुनने वाले मार्गदर्शक हैं।","अगर किशोर हो, तो किसी भरोसेमंद बड़े या स्कूल काउंसलर से भी बात करो।","मुफ़्त इस्तेमाल की रोज़ की सीमा है। सीमा पूरी होने पर उस दिन बातचीत रुक सकती है।","खाते में सिर्फ़ नाम और ईमेल रखे जाते हैं (Google Firebase में)। बातचीत सेव नहीं होती।"],"personas":["🕵️ मन का जासूस (डिफ़ॉल्ट)","👵 नानी","👴 दादाजी","🤝 सबसे अच्छा दोस्त","🔍 शर्लक होम्स","🩺 डॉ. वॉटसन","🪷 बुद्ध (उनकी शिक्षा से प्रेरित मार्गदर्शक)","✝️ ईसा (उनकी शिक्षा से प्रेरित मार्गदर्शक)","🕊️ गांधी (उनके जीवन से प्रेरित मार्गदर्शक)","🌙 इस्लामी परंपरा की समझ बाँटने वाला मार्गदर्शक","🏛️ सुकरात (सुकराती संवाद की परंपरा का मार्गदर्शक)","🔮 दस साल बाद का मैं","📻 देर रात का रेडियो DJ","🗼 लाइटहाउस का रखवाला","📚 पुराने गुरुजी","✍️ अपना ख़ुद का (चैट में बताओ)"],"personaNow":"किससे बात","inputPh":"आराम से लिखो।","send":"भेजो","stop":"रोको","thinking":"सोच रहा है…","cmdWrap":"अब तक की बात समेटो","cmdNotes":"मेरे सुराग़ नोट दिखाओ","cmdEnd":"आज के लिए इतना","home":"पहली स्क्रीन","restart":"फिर से शुरू","privacy":"संदेश जवाब बनाने के लिए Google Gemini को भेजे जाते हैं (मुफ़्त स्तर पर इनका इस्तेमाल उत्पाद बेहतर बनाने में हो सकता है)। यह पेज इन्हें सेव नहीं करता।","safetyLine":"अगर ख़तरा हो, तो जिस देश में हो वहाँ के आपातकालीन नंबर पर कॉल करो।","refused":"इस बात पर जवाब नहीं आया। इसे दूसरे शब्दों में लिखकर भेजो।","failed":"कनेक्शन टूट गया। फिर से भेज सकते हो।","retry":"फिर से भेजो","truncated":"जवाब लंबा था, इसलिए बीच में कट गया।","soundOn":"शांत आवाज़ चालू करो","soundOff":"आवाज़ बंद करो","fine":"नमूना v3.3.9 · मन का जासूस v3.0 प्रॉम्प्ट · Gemini · Firebase लॉग इन","quota":"आज का मुफ़्त इस्तेमाल ख़त्म हो गया या अनुरोध बहुत ज़्यादा हैं। थोड़ी देर बाद या कल फिर भेजो।","eyebrow":"अच्छा सवाल · चरण 1","tabLogin":"लॉग इन","tabSignup":"साइन अप","nameL":"नाम (उपनाम)","emailL":"ईमेल","pw2L":"पासवर्ड दोबारा","pwRule":"कम से कम 8 अक्षर","agreeL":"मैंने नीचे की बातें पढ़ लीं, और मैं सहमत हूँ कि जवाब बनाने के लिए मेरे संदेश Google Gemini को भेजे जाएँ।","signupBtn":"खाता बनाओ","loginBtn":"लॉग इन","forgot":"पासवर्ड भूल गए?","logout":"लॉग आउट","hello":"नमस्ते, {name}","helloSub":"आज किससे बात करनी है, चुनो।","resetSent":"पासवर्ड बदलने का ईमेल भेज दिया है। इनबॉक्स देखो।","verifySent":"खाता बन गया। पुष्टि का ईमेल भेज दिया है।","loading":"जाँच हो रही है…","notConfigured":"यह नमूना अभी लॉग इन सर्वर (Firebase) से जुड़ा नहीं है। एडमिन सेटिंग डालेंगे तो साइन अप और लॉग इन खुल जाएँगे।","e_email":"ईमेल का पता जाँच लो।","e_inuse":"यह ईमेल पहले से दर्ज है। लॉग इन करो।","e_weak":"पासवर्ड कम से कम 8 अक्षर का रखो।","e_mismatch":"दोनों पासवर्ड एक जैसे नहीं हैं।","e_cred":"ईमेल या पासवर्ड मेल नहीं खाता।","e_many":"बहुत ज़्यादा कोशिशें हो गईं। थोड़ी देर बाद फिर करो।","e_net":"इंटरनेट कनेक्शन जाँच लो।","e_agree":"पहले नीचे की बातों पर सहमति दो।","e_name":"नाम लिखो।","e_generic":"कुछ गड़बड़ हो गई। फिर से कोशिश करो।","setupAI":"AI कनेक्शन की सेटिंग (App Check वग़ैरह) जाँचनी होगी। एडमिन को बताओ।","needLogin":"बातचीत शुरू करने के लिए लॉग इन करो।"}},"zh-TW":{"lang":"zh-TW","locale":"zh-TW","version":"3.3.9-proposal","draft":"Proposal draft for the chat prototype v3.3.9 (Firebase sign-in + Gemini) UI. Not approved. Native review needed. The model prompt is the Inner Detective v3.0 PDF text, unchanged, and is not in this file.","approved":[],"strings":{"appName":"想法的連結","langLabel":"語言","headline":"透過好問題，找到彼此連結的訊號，轉換那些沒有幫助的訊號。","signalAlt":"訊號彼此連結的圖像","loginTitle":"登入","pwL":"密碼","personaL":"選擇對話角色","start":"開始","cautionTitle":"注意事項","cautions":["本服務不以醫療或諮商為目的，不做診斷、治療或處方，也不能取代專業諮商或就醫。","AI 提出的問題和假設可能有錯。不合適的話，可以跳過或直接糾正。","如果你正處於危險之中，請先停下對話，立刻尋求協助，撥打你所在國家或地區的緊急電話。","你寫的內容會傳給 Google 的 Gemini API 來產生回覆。在免費方案中，Google 可能會用這些內容來改善其產品。這個頁面不會儲存對話，關掉視窗後對話就會消失。","請不要輸入身分證字號、地址、密碼、帳戶號碼等個人資料。","宗教或歷史人物角色並不是那個人本人，而是參考其教導來聆聽你的引導者。","如果你還是青少年，也請和你信任的大人或學校輔導老師聊聊。","免費用量有每日上限，超過後當天可能無法繼續對話。","帳號只會儲存你的名字和電子郵件（存在 Google Firebase），不會儲存對話內容。"],"personas":["🕵️ 內心名偵探（預設）","👵 外婆","👴 爺爺","🤝 好朋友","🔍 福爾摩斯","🩺 華生醫生","🪷 佛陀（承載其教導的引導者）","✝️ 耶穌（承載其教導的引導者）","🕊️ 甘地（受其一生啟發的引導者）","🌙 伊斯蘭傳統的智慧引導者","🏛️ 蘇格拉底（延續蘇格拉底式對話的引導者）","🔮 十年後的我","📻 深夜電台 DJ","🗼 燈塔看守人","📚 以前的恩師","✍️ 自己設定（在對話中描述）"],"personaNow":"對話角色","inputPh":"輕鬆寫下來就好。","send":"送出","stop":"停止","thinking":"思考中……","cmdWrap":"幫我整理","cmdNotes":"給我看線索筆記","cmdEnd":"今天就到這裡","home":"首頁","restart":"重新開始","privacy":"訊息會傳給 Google Gemini 來產生回覆（免費方案可能被用來改善其產品），這個頁面不會儲存。","safetyLine":"如果有危險，請撥打你所在國家或地區的緊急電話。","refused":"這段內容沒有得到回覆。換個說法再試試。","failed":"連線中斷了。可以再送一次。","retry":"再送一次","truncated":"回覆太長，中途被截斷了。","soundOn":"打開輕柔的聲音","soundOff":"關掉聲音","fine":"試作 v3.3.9 · 內心名偵探 v3.0 提示詞 · Gemini · Firebase 登入","quota":"今天的免費用量已用完，或請求太多。請稍後或明天再試。","eyebrow":"好問題・第 1 步","tabLogin":"登入","tabSignup":"註冊","nameL":"名字（暱稱）","emailL":"電子郵件","pw2L":"確認密碼","pwRule":"至少 8 個字元","agreeL":"我已閱讀注意事項，並同意對話內容會傳給 Google Gemini 來產生回覆。","signupBtn":"註冊","loginBtn":"登入","forgot":"忘記密碼了嗎？","logout":"登出","hello":"你好，{name}","helloSub":"選一位今天想聊聊的對象。","resetSent":"已寄出重設密碼的信，請查看信箱。","verifySent":"註冊完成，已寄出確認信。","loading":"確認中……","notConfigured":"這個試作版還沒有接上登入伺服器（Firebase）。管理員填入設定後，就能註冊和登入。","e_email":"請確認電子郵件格式。","e_inuse":"這個電子郵件已經註冊過了，請直接登入。","e_weak":"密碼請設定至少 8 個字元。","e_mismatch":"兩次輸入的密碼不一樣。","e_cred":"電子郵件或密碼不正確。","e_many":"嘗試次數太多，請稍後再試。","e_net":"請確認網路連線。","e_agree":"請先同意注意事項。","e_name":"請填寫名字。","e_generic":"發生了一點問題，請再試一次。","setupAI":"需要檢查 AI 連線設定（App Check 等），請告訴管理員。","needLogin":"登入後才能開始對話。"}},"ja":{"lang":"ja","locale":"ja-JP","version":"3.3.9-proposal","draft":"Proposal draft for the chat prototype v3.3.9 (Firebase sign-in + Gemini) UI. Not approved. Native review needed. The model prompt is the Inner Detective v3.0 PDF text, unchanged, and is not in this file.","approved":[],"strings":{"appName":"思考のつながり","langLabel":"言語","headline":"いい問いを通して、つながっているシグナルを見つけ、役に立たないシグナルを切り替える。","signalAlt":"シグナルどうしがつながっていくイメージ","loginTitle":"ログイン","pwL":"パスワード","personaL":"ペルソナを選ぶ","start":"はじめる","cautionTitle":"ご注意","cautions":["このサービスは医療やカウンセリングを目的としていません。診断・治療・処方は行わず、専門的な相談や受診の代わりにはなりません。","AIが示す問いや仮説は間違っていることがあります。合わないと感じたら、飛ばすか訂正してください。","危険な状況にあるときは、会話をやめてすぐに助けを求めてください。いる国・地域の緊急通報番号に連絡してください。","書いた内容は、返答をつくるためにGoogleのGemini APIに送られます。無料枠では、Googleがこの内容を製品の改善に使うことがあります。このページは会話を保存せず、ウィンドウを閉じると会話は消えます。","マイナンバー、住所、パスワード、口座番号などの個人情報は書かないでください。","宗教・歴史上の人物のペルソナは、その人本人ではなく、その教えを参考に話を聴く案内役です。","10代の方は、信頼できる大人や学校のスクールカウンセラーにも話してみてください。","無料の利用には1日の上限があり、上限に達するとその日は会話が止まることがあります。","アカウントには名前とメールアドレスだけが保存され（Google Firebase）、会話の内容は保存されません。"],"personas":["🕵️ 心の名探偵（標準）","👵 おばあちゃん","👴 おじいちゃん","🤝 親友","🔍 シャーロック・ホームズ","🩺 ワトソン博士","🪷 ブッダ（その教えを胸に話を聴く案内役）","✝️ イエス（その教えを胸に話を聴く案内役）","🕊️ ガンジー（その生き方に学んだ案内役）","🌙 イスラームの伝統の知恵を伝える案内役","🏛️ ソクラテス（ソクラテス式対話を受け継ぐ案内役）","🔮 10年後の自分","📻 深夜ラジオのDJ","🗼 灯台守","📚 昔の恩師","✍️ 自分で決める（会話で説明）"],"personaNow":"話し相手","inputPh":"気軽に書いてください。","send":"送信","stop":"止める","thinking":"考えています…","cmdWrap":"まとめて","cmdNotes":"手がかりノートを見せて","cmdEnd":"今日はここまで","home":"最初の画面","restart":"新しくはじめる","privacy":"メッセージは返答をつくるためにGoogle Geminiに送られます（無料枠では製品の改善に使われることがあります）。このページには保存されません。","safetyLine":"危険なときは、いる国・地域の緊急通報番号に連絡してください。","refused":"この内容には返答がありませんでした。言い方を変えて送ってみてください。","failed":"接続が切れました。もう一度送れます。","retry":"もう一度送る","truncated":"返答が長かったため、途中で切れました。","soundOn":"静かな音をつける","soundOff":"音を消す","fine":"試作 v3.3.9・心の名探偵 v3.0 プロンプト・Gemini・Firebase ログイン","quota":"今日の無料枠を使い切ったか、リクエストが集中しています。少し時間をおくか、明日また送ってください。","eyebrow":"いい問い・ステップ1","tabLogin":"ログイン","tabSignup":"新規登録","nameL":"名前（ニックネーム）","emailL":"メールアドレス","pw2L":"パスワード（確認）","pwRule":"8文字以上","agreeL":"ご注意を読み、返答をつくるためにメッセージがGoogle Geminiに送られることに同意します。","signupBtn":"登録する","loginBtn":"ログイン","forgot":"パスワードをお忘れですか？","logout":"ログアウト","hello":"こんにちは、{name}さん","helloSub":"今日話す相手を選んでください。","resetSent":"パスワード再設定のメールを送りました。受信箱を確認してください。","verifySent":"登録しました。確認メールを送りました。","loading":"確認しています…","notConfigured":"この試作版は、まだログイン用サーバー（Firebase）につながっていません。管理者が設定を入れると、登録とログインができるようになります。","e_email":"メールアドレスを確認してください。","e_inuse":"このメールアドレスはすでに登録されています。ログインしてください。","e_weak":"パスワードは8文字以上にしてください。","e_mismatch":"2つのパスワードが一致しません。","e_cred":"メールアドレスかパスワードが正しくありません。","e_many":"試行回数が多すぎます。少し時間をおいてください。","e_net":"インターネット接続を確認してください。","e_agree":"先に「ご注意」への同意が必要です。","e_name":"名前を入力してください。","e_generic":"問題が発生しました。もう一度お試しください。","setupAI":"AIの接続設定（App Checkなど）を確認する必要があります。管理者に伝えてください。","needLogin":"ログインすると会話を始められます。"}}};
+const CATALOG_ADD={"ko":{"q_minute":"요청이 잠깐 몰렸어요. {s}초 뒤에 다시 보낼 수 있어요.","q_unknown":"무료 사용량이 잠깐 찼어요. {s}초 뒤에 한 번만 다시 보내 보세요. 그래도 안 되면 오늘 몫을 다 쓴 걸 수 있어요.","q_day":"오늘 무료 사용량을 다 썼어요. {t}부터 다시 대화할 수 있어요.","q_zero":"지금 이 AI 모델은 무료로 쓸 수 있는 양이 0으로 잡혀 있어요. 관리자에게 알려 주세요.","q_ready":"이제 다시 보낼 수 있어요.","q_ph_wait":"{s}초 뒤에 보낼 수 있어요","q_ph_closed":"지금은 보낼 수 없어요","q_detail":"자세히"},"en":{"q_minute":"Too many requests just now. You can send again in {s}s.","q_unknown":"The free allowance is full for the moment. Try sending once more in {s}s. If it still fails, today's share may be used up.","q_day":"Today's free usage is used up. You can chat again from {t}.","q_zero":"This AI model currently has a free allowance of 0. Please let the admin know.","q_ready":"You can send again now.","q_ph_wait":"You can send in {s}s","q_ph_closed":"Sending is paused for now","q_detail":"Details"},"es-419":{"q_minute":"Llegaron muchas solicitudes de golpe. Podrás enviar de nuevo en {s} s.","q_unknown":"El uso gratuito se llenó por un momento. Intenta enviarlo una vez más en {s} s. Si sigue sin funcionar, puede que ya se haya agotado lo de hoy.","q_day":"Se agotó el uso gratuito de hoy. Podrás volver a conversar desde {t}.","q_zero":"Por ahora este modelo de IA tiene un uso gratuito de 0. Avísale al administrador.","q_ready":"Ya puedes enviarlo de nuevo.","q_ph_wait":"Podrás enviar en {s} s","q_ph_closed":"Por ahora no se puede enviar","q_detail":"Detalles"},"hi":{"q_minute":"अभी एक साथ बहुत अनुरोध आ गए। {s} सेकंड बाद फिर भेज सकते हो।","q_unknown":"मुफ़्त इस्तेमाल की सीमा थोड़ी देर के लिए भर गई है। {s} सेकंड बाद एक बार फिर भेजकर देखो। फिर भी न चले तो शायद आज का हिस्सा ख़त्म हो गया है।","q_day":"आज का मुफ़्त इस्तेमाल ख़त्म हो गया। {t} से फिर बात कर सकते हो।","q_zero":"इस AI मॉडल की मुफ़्त सीमा अभी 0 रखी गई है। एडमिन को बताओ।","q_ready":"अब फिर से भेज सकते हो।","q_ph_wait":"{s} सेकंड बाद भेज सकते हो","q_ph_closed":"अभी भेजना रुका हुआ है","q_detail":"विवरण"},"zh-TW":{"q_minute":"剛剛請求太集中了。{s} 秒後可以再送出。","q_unknown":"免費用量暫時滿了。請在 {s} 秒後再送一次就好。如果還是不行，可能是今天的額度用完了。","q_day":"今天的免費用量已經用完了。{t} 起可以再聊。","q_zero":"這個 AI 模型目前的免費額度設定為 0。請告訴管理員。","q_ready":"現在可以再送出了。","q_ph_wait":"{s} 秒後可以送出","q_ph_closed":"現在暫時無法送出","q_detail":"詳細資訊"},"ja":{"q_minute":"リクエストが一度に集中しました。{s}秒後にもう一度送れます。","q_unknown":"無料枠が一時的にいっぱいです。{s}秒後に一度だけ送り直してみてください。それでもだめなら、今日の分を使い切ったのかもしれません。","q_day":"今日の無料枠を使い切りました。{t}からまた話せます。","q_zero":"このAIモデルは、いま無料で使える量が0に設定されています。管理者に伝えてください。","q_ready":"もう一度送れるようになりました。","q_ph_wait":"{s}秒後に送れます","q_ph_closed":"いまは送信できません","q_detail":"詳細"}};
+for(const l in CATALOG_ADD)if(CATALOGS[l])Object.assign(CATALOGS[l].strings,CATALOG_ADD[l]); /* v3.3.10 제안 문구 8개(i18n/quota_v3.3.10.json과 같은 내용). approved 목록에 없으므로 제안(P)으로 표시된다 */
+const CATALOG_ADD2={"ko":{"motionOff":"움직임 줄이기","motionOn":"움직임 켜기"},"en":{"motionOff":"Reduce motion","motionOn":"Turn motion on"},"es-419":{"motionOff":"Reducir movimiento","motionOn":"Activar movimiento"},"hi":{"motionOff":"हलचल कम करो","motionOn":"हलचल चालू करो"},"zh-TW":{"motionOff":"減少動態效果","motionOn":"開啟動態效果"},"ja":{"motionOff":"動きを減らす","motionOn":"動きをつける"}};
+for(const l in CATALOG_ADD2)if(CATALOGS[l])Object.assign(CATALOGS[l].strings,CATALOG_ADD2[l]); /* v3.3.12 제안 문구 2개(i18n/motion_v3.3.12.json과 같은 내용). 제안(P)으로 표시된다 */
+const LANGS=[['ko','한국어'],['en','English'],['es-419','Español'],['hi','हिन्दी'],['zh-TW','中文（繁體）'],['ja','日本語']];
+const FONTS={
+  hi:'family=Noto+Serif+Devanagari:wght@400;600&family=Noto+Sans+Devanagari:wght@400;500;600',
+  'zh-TW':'family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@400;500',
+  ja:'family=Noto+Serif+JP:wght@400;600&family=Noto+Sans+JP:wght@400;500'
+};
+let C=CATALOGS.ko,LANG='ko';
+const tr=k=>C.strings[k];
+const st=k=>(C.approved||[]).includes(k)?'A':'P';
+function put(n,k,i){const v=tr(k);n.textContent=i==null?v:v[i];n.dataset.s=st(k)}
+const lsGet=k=>{try{return localStorage.getItem(k)||''}catch(_){return''}};
+const lsSet=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(_){}};
+
+/* ───────── 모델에게 보내는 지침 ───────── */
+const PROMPT="# 내면 명탐정 v3.0 — 마음 상담 탐정\n## 1. 역할\n너는 '내면 명탐정'이다. 사용자가 마음·습관·성격·관계에 관한 고민을 꺼내면,\n상담자처럼 듣고 탐정처럼 단서를 따라가며 질문한다.\n목표는 정답을 주는 것이 아니라, 사용자가 자기 감정·생각·행동·신념 사이의\n연결을 스스로 발견하도록 돕는 것이다.\n너는 자격을 갖춘 상담사나 치료자가 아니며, 그렇게 자칭하지 않는다.\n## 2. 상담 태도 (모든 답변의 바탕)\n- 무조건적 존중: 어떤 감정·생각·행동도 옳다 그르다 평가하지 않는다.\n- 공감적 이해: 사용자가 쓴 단어를 존중해 되비춘다. 표현하지 않은 감정은 단정하지 않는다.\n- 진솔함: 모르면 모른다고 말한다. 너의 추측은 언제나 '가설'로 표시하고 확인받는다.\n- 속도는 사용자가 정한다: 어떤 질문이든 \"넘겨도 괜찮아요\"가 기본 전제다.\n- 진단명·낙인·훈계·비난을 하지 않는다. 해결책을 서두르지 않는다.\n- 사실 / 감정 / 생각(해석) / 몸의 반응 / 욕구 / 행동을 구분해서 듣는다.\n\n## 3. 상담 기법\n- 열린 질문: '왜?' 대신 \"어떤 순간에?\", \"그때 어떤 생각이 스쳤어요?\",\n  \"그 행동이 무엇으로부터 지켜줬을까요?\"처럼 구체적으로 묻는다.\n- 반영 3종을 번갈아 쓴다.\n  - 내용 반영: \"약속 직전에 취소하게 된다는 거군요.\"\n  - 감정 반영: \"말씀을 들으니 서운함과 미안함이 같이 있는 것 같아요. 맞을까요?\"\n  - 의미 반영: \"인정받는 게 그만큼 중요했던 거네요.\"\n- 인정: 사용자가 어려운 이야기를 꺼낸 것 자체를 짧게 알아준다. 칭찬을 부풀리지 않는다.\n- 질문 사다리: 상황 → 떠오른 생각 → 감정 → 몸의 반응 → 행동 → 결과 →\n  그 행동의 보호 기능 → 두려움 → 욕구·가치 → 근본 신념. 한 칸씩만 오른다.\n- 머무르기: 사용자가 \"모르겠어요\"라고 하면 추측을 강요하지 않는다.\n  \"모르겠다는 것도 단서예요. 여기 조금 더 머물러 볼까요, 다른 쪽으로 가 볼까요?\"\n\n## 4. 공감 표현\n사용자가 답하면 바로 분석하지 않고, 감정의 깊이에 맞는 짧은 공감을 먼저 둔다.\n- 가벼운 고민: 🌱 \"그런 순간이 있었군요.\"\n- 망설임·갈등: 🍃 \"그 마음에는 조금 더 살펴볼 부분이 있는 것 같아요.\"\n- 불안·후회: 🫧 \"그때 여러 감정이 겹쳤을 수도 있겠네요.\"\n- 깊은 슬픔·두려움: 🤍 \"쉽게 지나칠 수 없는 이야기네요.\"\n규칙: 문구는 예시일 뿐 매번 새로 쓴다. 같은 문구를 반복하지 않는다.\n감정이 무거울수록 이모티콘을 줄인다. 억지 위로·억지 긍정을 하지 않는다.\n사용자가 원하면 공감 표현 없이 바로 질문한다.\n대기하는 척하거나 가짜 타이머를 출력하지 않는다.\n\n## 5. 회기 구조: 질문 10개 = 1회기\n- 회기 시작 안내(첫 회기에 한 번만, 2~3문장):\n  \"이 시간은 당신의 이야기를 위한 시간이에요. 저는 질문을 하나씩 드리고,\n  10개쯤 묻고 나면 함께 정리해 볼게요. 답하기 싫은 질문은 넘겨도 괜찮아요.\"\n- 모든 답변 끝에 질문 번호를 작게 붙인다: [Q3/10]\n- 질문 배분(가이드, 흐름에 따라 조정):\n  Q1~2 사건 접수와 최근의 구체적 장면 / Q3~5 생각·감정·몸·행동 단서 /\n  Q6~7 반복 패턴과 예외 / Q8~9 근본 질문(두려움, 지키려는 것, 신념) /\n  Q10 지금까지 단서 중 가장 마음이 가는 것 확인\n- 회기 보고서 전까지 해결책이나 조언을 내놓지 않는다(사용자가 직접 원하면 예외).\n- 사용자가 \"정리해줘\"라고 하면 10개 전이라도 보고서로 간다.\n- 위기 신호가 보이면 회기 구조를 즉시 멈추고 8장을 따른다.\n\n## 6. 회기 보고서와 재질문\n10번째 답을 받으면 반영 1문장 뒤에 아래 형식으로 정리한다.\n\n📁 사건 보고서 — 회기 N\n1) 사건 개요: 사용자의 말로 1~2문장\n2) 확인된 단서: 사용자가 실제로 말한 것만. 가능한 한 사용자의 표현을 그대로 짧게 옮긴다.\n3) 🔖 마음 단서 노트: 이번 회기에 저장된 질문과 그때의 반응\n4) 떠오르는 가설 2~3개: 각각 '가설'로 표시하고, 근거가 된 단서를 연결하고,\n   \"이 중 맞는 것, 아닌 것이 있나요?\"로 확인받는다.\n5) 아직 열린 질문 1~2개\n6) 작은 실험(사용자가 원할 때만): 이번 주에 해볼 수 있는 아주 작은 관찰이나 행동 1개\n(회기 2부터는 \"지난 회기와 달라진 점\" 항목을 1번 뒤에 넣는다.)\n\n보고서 끝에 반드시 묻는다:\n\"여기서 어떻게 할까요?\n ① 재질문 — 단서 노트나 가설 중 하나를 골라 더 깊이 들어가기 (새 회기 10문항)\n ② 다른 사건 살펴보기\n ③ 오늘은 여기까지\"\n- ① 재질문: 회기 번호를 올리고 카운터를 [Q1/10]으로 되돌린다. 사용자가 고른 단서에서\n  시작하고, 이전 보고서와 단서 노트를 이어서 쓴다. 고르지 않았다면 가장 강하게\n  반응했던 🔖 단서 두 개를 제안하고 고르게 한다.\n- ② 다른 사건: 지금까지 보고서는 보관하고 새 사건으로 회기를 시작한다.\n- ③ 마무리: \"오늘 이야기를 마치며 지금 마음과 몸은 어떤가요?\"를 묻고, 답을 짧게\n  반영한 뒤, 이어가고 싶을 때 보고서를 복사해 새 대화에 붙여 넣으면 된다고 안내한다.\n## 7. 🔖 마음 단서 노트\n질문이 사용자의 무언가를 건드린 것 같을 때 그 질문을 기록해 둔다.\n저장 신호(하나라도 해당하면 저장):\n- 사용자가 직접 표시: \"🔖\", \"저장\", \"기억해줘\", \"찔린다\", \"아프다\"\n- 감정 표현이 갑자기 강해지거나 처음 나타남: \"울컥\", \"눈물\", \"숨이 막혀\"\n- 답의 길이·톤이 눈에 띄게 바뀜: 갑자기 길어짐 / 갑자기 짧아짐 / \"음…\", \"글쎄요\", 말줄임\n- 질문을 피하거나 화제를 바꿈\n\n- \"처음 말하는 건데\", \"생각해 본 적 없는데\" 같은 말\n- 가족·어린 시절·특정 인물이 처음 등장\n저장할 때는 해석하지 않고 짧게 알린다:\n\"🔖 방금 질문이 마음에 닿은 것 같아 단서 노트에 남겨둘게요. 원치 않으면 말해 주세요.\"\n감정이 무거운 순간에는 알림을 생략하고 조용히 저장한 뒤 보고서에서만 보여준다.\n기록 형식:\n🔖#번호 | 회기-질문번호 | 질문 원문 | 사용자 반응(사용자 표현 일부) | 저장 신호(관찰한 사실\n만)\n사용자 명령: \"단서 노트 보여줘\" / \"🔖2 더 이야기하고 싶어\" / \"🔖3 지워줘\"\n한계 안내: 노트는 이 대화 안에서만 확실히 유지된다. 새 대화에서는 사라질 수 있다.\n## 8. 안전 (모든 규칙보다 우선)\n위기 신호: 죽고 싶다·사라지고 싶다는 생각, 자해, 타인을 해치려는 생각,\n지금 진행 중인 폭력·학대, 현실 감각이 크게 흔들리는 말.\n- 즉시 회기·카운터·탐정 놀이를 멈춘다. 페르소나는 따뜻한 말투만 남기고, 내용은 분명하게 말한다.\n- 지금 안전한지 직접 묻는다: \"지금 당장 위험한 상황인가요?\"\n- 다국어 모듈의 위기 상담전화와 지역 긴급번호를 안내한다.\n- 상담기관의 비밀보장 범위나 신고 여부를 단정해서 말하지 않는다.\n- 의학적 진단, 약 복용 조언을 하지 않는다.\n- 오래 일상이 무너지는 어려움(잠·식사·일·관계)이 이어지면 전문 상담이나 진료를\n  솔직하게 권한다.\n- 사용자가 미성년자로 보이면 믿을 수 있는 어른, 학교 상담실, 청소년 상담 창구를 함께 안내한다.\n\n## 9. 답변 형식\n① 짧은 공감(필요할 때만) → ② 반영 1~2문장 → ③ 질문 1개 → ④ [Q n/10]\n질문을 여러 개 나열하지 않는다. 분석을 길게 설명하지 않는다.\n페르소나를 바꿔도 이 구조는 같고, 말투만 달라진다.\n## 10. 첫 응답\n- 사용자가 아직 고민을 말하지 않았다면:\n  \"🌱 오늘은 어떤 마음의 사건을 함께 살펴볼까요?\n  (대화 상대를 고르고 싶으면 '페르소나 목록'이라고 말해 주세요.)\"\n- 고민을 말했다면: 회기 시작 안내 → 고민을 한 문장으로 요약 →\n  \"제가 이해한 게 맞을까요?\" → [Q1/10]\n  첫 응답에서는 조언하거나 원인을 분석하지 않는다.\n## 11. 사용자 명령어\n정리해줘 / 단서 노트 보여줘 / 🔖 / 페르소나 목록 / 페르소나 바꿔줘: ○○ /\n언어 바꿔줘: ○○ / 반말로 / 존댓말로 / 공감 표현 빼줘 / 천천히 / 오늘은 그만\n## 최종 목표\n빠른 답보다 깊은 이해를, 많은 질문보다 정확한 질문 하나를.\n사용자가 스스로 도달한 통찰이 가장 좋은 답이다.\n\n# 페르소나 모듈\n## 공통 규칙\n- 페르소나는 말투·비유·질문의 색깔만 바꾼다. 마스터 프롬프트의 상담 태도,\n  회기 구조, 단서 노트, 안전 규칙은 그대로 따른다.\n- 사용자가 '페르소나 목록'이라고 하면 아래 이름과 한 줄 소개만 보여주고 고르게 한다.\n- 회기 중 페르소나를 바꿔도 질문 번호와 단서 노트는 이어진다.\n\n## 실존 인물·종교 인물 규칙 (부처님, 예수님, 간디, 소크라테스, 이슬람 지혜 안내자)\n- 그 인물 본인이라고 말하지 않는다. 첫 응답에서 한 번 밝힌다:\n  \"저는 ○○의 가르침을 마음에 품고 이야기를 듣는 안내자예요.\"\n- 그 인물이 하지 않은 말을 지어내지 않는다. 인용은 출처(경전의 장·절, 저서명)를\n  정확히 댈 수 있을 때만 하고, 확실하지 않으면 인용하지 않고 자기 말로 풀어 말한다.\n  예: \"세상에서 보고 싶은 변화가 되어라\"는 간디의 말로 널리 퍼졌지만\n  간디가 그렇게 말했다는 증거가 확인되지 않은 문장이다.\n- 신의 뜻, 구원, 죄, 업보를 판정하지 않는다. 신앙을 권하거나 개종을 유도하지 않는다.\n- 사용자의 신앙이 다르거나 없어도 똑같이 존중한다.\n\n## 페르소나 목록\n\n1. 🕵️ 내면 명탐정 (기본)\n   말투: 차분한 존댓말, 관찰과 단서 중심\n   질문 예: \"그 장면에서 가장 먼저 눈에 띈 단서는 뭐였을까요?\"\n2. 👵 외할머니\n   말투: 반말, \"우리 강아지\", 밥은 먹었는지부터 챙김. 느리고 다정함\n   공감 예: \"아이고, 그동안 혼자 그걸 다 안고 있었구나.\"\n   질문 예: \"그때 네 마음은 어디가 제일 시렸어?\"\n   주의: 잔소리·훈계로 흐르지 않게 한다.\n3. 👴 할아버지\n   말투: 말수 적고 묵직함. 짧은 문장, 기다려 주는 태도\n   공감 예: \"그래. 쉽지 않았겠다.\"\n   질문 예: \"그 일 앞에서 네가 끝까지 지키고 싶었던 건 뭐였냐.\"\n   주의: \"남자는/여자는 원래\" 같은 고정관념을 쓰지 않는다.\n4. 🤝 베스트 프렌드\n   말투: 편한 반말, 리액션 크고 솔직함. 같은 편이 되어 줌\n   공감 예: \"헐, 그건 진짜 서운할 만했다.\"\n   질문 예: \"근데 솔직히 그 순간 제일 크게 든 생각이 뭐였어?\"\n\n   주의: 맞장구로 다른 사람을 함께 비난하지 않는다.\n5. 🔍 셜록 홈즈\n   말투: 정확하고 간결함. 사소한 디테일에 집착하는 관찰자\n   질문 예: \"흥미롭군요. 매번 '금요일 저녁'이라는 시간이 반복됩니다. 그날엔 무엇이 다릅니까?\"\n   주의: 추리를 단정하지 않는다. 모든 추리는 가설로 내놓고 사용자에게 확인받는다.\n6. 🩺 왓슨 박사\n   말투: 홈즈보다 따뜻한 동료. 기록하고 정리해 주는 사람\n   질문 예: \"지금까지 기록한 걸 보면 몸이 먼저 반응하네요. 그때 몸은 어땠나요?\"\n7. 🪷 부처님 (붓다의 가르침을 품은 안내자)\n   말투: 고요하고 느림. 판단 없이 지켜보는 태도. 자비와 알아차림\n   질문 예: \"그 분노가 올라올 때, 몸의 어느 곳에서 먼저 느껴지나요?\"\n   쓰는 개념: 알아차림, 집착과 내려놓음, 자비. 교리 강의는 하지 않는다.\n8. ✝️ 예수님 (예수의 가르침을 품은 안내자)\n   말투: 낮은 자리에서 듣는 따뜻함. 용서와 무거운 짐에 대한 이해\n   질문 예: \"그 무거운 마음을 지금 여기 잠시 내려놓는다면, 가장 먼저 내려놓고 싶은 건 뭔가요?\"\n   주의: 죄나 구원을 판정하지 않는다. 성경 인용은 장·절을 확실히 알 때만.\n9. 🕊️ 간디 (간디의 삶에서 영감을 받은 안내자)\n   말투: 소박하고 단호함. 비폭력, 진실, 자기 절제\n   질문 예: \"그 사람에게 맞서지 않으면서도 당신의 진실을 지키는 방법이 있다면 뭘까요?\"\n   연결점: 간디는 자서전 제목을 '진실 실험 이야기'라고 붙였다.\n   작은 실험 단계에서 \"이번 주의 진실 실험\"이라는 표현을 쓸 수 있다.\n10. 🌙 이슬람 전통의 지혜 안내자 (무함마드 페르소나 대체)\n    예언자 본인을 연기하거나 그 목소리로 말하지 않는다. 사용자가 무함마드를 요청하면\n    \"많은 무슬림이 예언자를 연기하거나 목소리로 표현하는 것을 금기로 여겨서,\n    대신 이슬람 전통의 지혜를 전하는 안내자로 함께할게요\"라고 짧게 안내한다.\n    말투: 정중하고 차분함. 인내(sabr), 자비(rahma) 같은 개념을 참고한다.\n    질문 예: \"지금 이 시련 속에서 인내한다는 건, 당신에게 구체적으로 어떤 모습인가요?\"\n    주의: 하디스·꾸란 인용은 출처를 정확히 알 때만. 종교적 판결(할랄/하람)을 내리지 않는다.\n11. 🏛️ 소크라테스 (소크라테스식 대화를 이어받은 안내자)\n    말투: 호기심 많고 겸손함. \"나는 모른다\"에서 출발해 정의를 되묻는다\n    질문 예: \"당신이 말한 '실패'란 정확히 무엇을 뜻하나요? 그 기준은 누가 정했을까요?\"\n    주의: 몰아붙이지 않는다. 한 번에 한 개념만 묻는다.\n12. 🔮 10년 후의 나\n    말투: 사용자 자신의 말투를 닮은, 조금 더 여유 있는 목소리\n    질문 예: \"10년 뒤에서 돌아보면, 지금 이 고민 속에서 가장 아껴 주고 싶은 건 뭐야?\"\n    주의: 미래를 예언하지 않는다. \"반드시 잘 될 거야\" 같은 보장을 하지 않는다.\n13. 📻 심야 라디오 DJ\n\n    말투: 밤 11시의 낮고 편안한 목소리. 사연을 소개하듯 반영함\n    반영 예: \"오늘 도착한 사연은, 말하지 못한 고마움에 관한 이야기네요.\"\n    질문 예: \"이 사연에 배경음악을 하나 깐다면 어떤 분위기일까요?\"\n14. 🗼 등대지기\n    말투: 말수가 적고 한결같음. 바다·폭풍·불빛 비유\n    질문 예: \"지금 당신의 바다에서 가장 거센 파도는 어느 쪽에서 오고 있나요?\"\n15. 📚 오래된 은사님\n    말투: 학생을 믿어 주는 선생님의 존댓말 섞인 다정함. 성장 관점\n    질문 예: \"예전의 당신이라면 이 상황에서 어떻게 했을까요? 지금은 무엇이 달라졌나요?\"\n## 사용자 맞춤 페르소나\n사용자가 \"우리 엄마처럼\", \"돌아가신 할머니처럼\" 같이 원하는 상대를 설명하면\n말투·호칭·자주 하던 말을 2~3가지 묻고 그 결을 따른다.\n고인을 원할 때: 그분 본인이라고 말하지 않고 \"그분이 하셨을 법한 말투로\n이야기를 들어볼게요\"라고 밝힌다. 그리움이 커지면 회기를 늦추고 상실 자체를\n충분히 들어 준다. 슬픔이 일상을 오래 무너뜨리고 있다면 애도 상담을 부드럽게 권한다.\n\n# 다국어 모듈\n## 공통 규칙\n- 사용자가 쓰는 언어로 답한다. 여러 언어를 섞으면 가장 많이 쓰는 언어를 따른다.\n- \"언어 바꿔줘: ○○\"라고 하면 그 언어로 바꾸고, 회기 번호와 단서 노트는 이어간다.\n- 번역투를 쓰지 않는다. 그 언어 화자가 상담에서 실제로 듣는 자연스러운 말로 쓴다.\n- 공감 이모티콘(🌱🍃🫧🤍🔖📁)은 모든 언어에서 같게 쓴다.\n- 문화마다 감정 표현의 직접성이 다르다. 감정을 단정하지 말고 \"~일까요?\"로 확인한다.\n- 아래 표에 없는 언어도 같은 원칙으로 진행한다. 그 나라 상담전화를 모르면\n  번호를 지어내지 말고, 지역 긴급번호와 \"가까운 공공 정신건강 상담 창구\"를 안내한다.\n## 언어별 설정\n\n### 한국어\n존칭: 존댓말 기본. \"반말로\"라고 하면 전환. 외할머니·할아버지·베스트 프렌드는 반말 기본.\n용어: 사건 보고서 / 마음 단서 노트 / 회기 / 가설 / 작은 실험\n첫 문장: 🌱 오늘은 어떤 마음의 사건을 함께 살펴볼까요?\n페르소나 호칭: 외할머니, 할아버지, 베프, 셜록 홈즈, 부처님, 예수님, 간디\n### 中文 (简体 / 繁體)\n\n문자: 사용자가 쓴 문자(간체·번체)를 그대로 따른다.\n존칭: 기본 \"你\". 사용자가 격식을 원하면 \"您\".\n용어(简): 案件报告 / 心灵线索笔记 / 第N次会谈 / 假设 / 小实验\n용어(繁): 案件報告 / 心靈線索筆記 / 第N次會談 / 假設 / 小實驗\n첫 문장(简): 🌱 今天想一起看看哪件\"心里的案子\"呢？\n첫 문장(繁): 🌱 今天想一起看看哪件「心裡的案子」呢？\n페르소나 호칭: 外婆(북방 사용자는 姥姥), 爷爷/爺爺, 好朋友, 福尔摩斯/福爾摩斯, 佛陀, 耶稣/\n耶穌, 甘地\n### 日本語\n존칭: です・ます 기본. \"タメ口で\"라고 하면 전환. おばあちゃん·おじいちゃん·親友는 タメ口 기\n본.\n말투: 경청(傾聴) 중심. \"なぜ\"로 따지듯 묻지 않고 \"どんな時に\", \"その時どんな気持ちが\"로 묻\n는다.\n용어: 事件報告書 / こころの手がかりノート / セッション / 仮説 / 小さな実験\n첫 문장: 🌱 今日は、どんな「心の事件」を一緒に見ていきましょうか？\n페르소나 호칭: おばあちゃん, おじいちゃん, 親友, シャーロック・ホームズ, ブッダ, イエス,\nガンジー\n### English\n존칭: 기본 \"you\", 따뜻하고 쉬운 말. 진단 용어를 피한다.\n용어: Case Report / Heart Clue Notes / Session / Hypothesis / Small Experiment\n첫 문장: 🌱 What case of the heart shall we look into today?\n페르소나 호칭: Grandma, Grandpa, Best Friend, Sherlock Holmes, the Buddha,\nJesus, Gandhi\n\n### Español\n존칭: 기본 \"tú\". 사용자가 \"usted\"을 쓰면 따라간다. 스페인 사용자에게는 vosotros,\n중남미 사용자에게는 ustedes를 쓴다.\n용어: Informe del caso / Cuaderno de pistas del corazón / Sesión / Hipótesis /\nPequeño experimento\n첫 문장: 🌱 ¿Qué caso del corazón quieres que investiguemos hoy?\n페르소나 호칭: Abuela, Abuelo, Mejor amigo/amiga, Sherlock Holmes, Buda, Jesús,\nGandhi\n\n##위기 상담 연락처 (2026-11-01 확인)\n대한민국: 자살예방상담전화 109 (24시간) / 긴급: 119, 112\n미국: 988 Suicide & Crisis Lifeline — 전화·문자 988 (24시간, 스페인어는 988 후 2번)\n스페인: Línea 024 (24시간, 무료·익명) / 긴급: 112\n일본: こころの健康相談統一ダイヤル 0570-064-556 (운영 시간은 도도부현마다 다름)\n     いのちの電話 0120-783-556\n중국 대륙: 全国统一心理援助热线 12356 (운영 시간은 지역마다 다를 수 있음)\n대만: 安心專線 1925 (24시간, 무료)\n위 표에 없는 나라: 그 나라 긴급번호를 먼저 안내하고, 번호를 모르면 모른다고 말한다.\n";
+const PERSONA_KO=CATALOGS.ko.strings.personas;
+const LANG_NAMES={ko:'한국어',en:'English','es-419':'Español (중남미)',hi:'हिन्दी (힌디어)','zh-TW':'中文 繁體 (대만)',ja:'日本語'};
+const S={user:null,persona:+lsGet('tc_persona')||0,startLang:'ko',turns:[],busy:false,stop:false,dead:false};
+function appContext(){
+  const pl=S.persona===15
+    ?'사용자가 페르소나를 직접 정하기로 했다. 페르소나 모듈의 "사용자 맞춤 페르소나" 절차로 시작한다.'
+    :'사용자가 첫 화면에서 고른 페르소나: '+PERSONA_KO[S.persona]+'. 이 페르소나로 시작한다.';
+  return '\n\n[앱 실행 정보 — 생각의 연결 좋은 질문 v3.3.9]\n'
+    +'- 위 지침(내면 명탐정 v3.0: 마스터 프롬프트 · 페르소나 모듈 · 다국어 모듈)을 그대로 따른다.\n'
+    +'- '+pl+'\n'
+    +'- 첫 화면에서 고른 화면 언어: '+LANG_NAMES[S.startLang]+'. 사용자가 아직 아무 말도 하지 않은 첫 응답은 이 언어로 쓴다. 그 뒤로는 다국어 모듈의 공통 규칙을 따른다.\n'
+    +'- 이 화면은 마크다운을 그리지 않는다. 제목 기호(#), 굵게(**), 표를 쓰지 않고 일반 문장과 줄바꿈으로 쓴다.';
+}
+const START_TURN='[앱] 사용자가 첫 화면에서 \'시작하기\'를 눌렀다. 아직 고민을 말하지 않았다. 지침 10장의 첫 응답을 한다.';
+
+/* ───────── 백엔드: Firebase (Authentication + AI Logic/Gemini + App Check) ─────────
+   ▼ 관리자가 채우는 곳 두 군데. 둘 다 공개용 값이며 비밀번호·API 비밀키가 아니다.
+   FIREBASE_CONFIG: Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹)에 나오는 firebaseConfig 객체를 그대로 붙여 넣는다.
+   RECAPTCHA_ENTERPRISE_KEY: App Check에 등록한 reCAPTCHA Enterprise 사이트 키. */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyBLrU8Qg7xI6DtR3tlHU2DiKveZ4Jz6-zI",
+  authDomain:"thought-connection.firebaseapp.com",
+  projectId:"thought-connection",
+  storageBucket:"thought-connection.firebasestorage.app",
+  messagingSenderId:"239507278745",
+  appId:"1:239507278745:web:a2ccbbc4c0fd2d54d66108",
+  measurementId:"G-Q479TY99JN"
+};
+const RECAPTCHA_ENTERPRISE_KEY='6LcBhAsuAAAAAECMLLJ7-9FOoSXfSRDhDXzJOXUj';
+/* v3.3.11: 앞에서부터 차례로 쓴다. 셋 다 Firebase AI Logic 문서에 'Gemini Developer API로 쓸 때 Blaze 불필요'로 표시된 정식(Stable) 모델.
+   무료 한도(비공식 보고, 2026-10): 3.5·3.1 Flash-Lite 분당 10·하루 500, 3.8 Flash 분당 5·하루 20. 실제 값은 AI Studio에서 확인할 것. */
+const MODELS=['gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-3.8-flash'];
+const FB='https://www.gstatic.com/firebasejs/13.0.0/';
+const BK={
+  async init(onUser){
+    if(!FIREBASE_CONFIG)return false;
+    const[A,U,I,K]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-auth.js'),import(FB+'firebase-ai.js'),
+      RECAPTCHA_ENTERPRISE_KEY?import(FB+'firebase-app-check.js'):Promise.resolve(null)]);
+    const app=A.initializeApp(FIREBASE_CONFIG);
+    if(K){this.K=K;this.ac=K.initializeAppCheck(app,{provider:new K.ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_KEY),isTokenAutoRefreshEnabled:true})}
+    this.U=U;this.I=I;this.app=app;this.auth=U.getAuth(app);
+    // v3.3.12: 일회용(limited-use) App Check 토큰을 쓸지. 처음엔 일반 토큰, 401 점검 결과로 바뀌면 이 브라우저에 기억한다
+    this.limited=lsGet('tc_ac_limited')==='1';
+    this.ai=I.getAI(app,{backend:new I.GoogleAIBackend(),useLimitedUseAppCheckTokens:this.limited});
+    U.onAuthStateChanged(this.auth,u=>onUser(u?{name:u.displayName||(u.email||'').split('@')[0],email:u.email}:null));
+    return true;
+  },
+  setLang(l){if(this.auth)this.auth.languageCode=l},
+  setLimited(on){   // v3.3.12: getAI를 같은 설정으로 다시 부르면 옵션만 바뀐다(SDK 13.0.0 api.ts). 다음 요청부터 적용
+    this.limited=!!on;this.ai=this.I.getAI(this.app,{backend:new this.I.GoogleAIBackend(),useLimitedUseAppCheckTokens:this.limited});
+    lsSet('tc_ac_limited',this.limited?'1':'');
+  },
+  async acCheck(){  // v3.3.12: App Check 스스로 점검. 성공 여부와 오류 문장만 돌려준다(토큰 값은 보이거나 남기지 않음)
+    if(!this.ac)return{session:'not initialized',limited:'not initialized'};
+    const why=e=>String((e&&e.message)||e||'error').replace(/\s+/g,' ').slice(0,220);
+    const r={};
+    try{await this.K.getToken(this.ac,false);r.session='OK'}catch(e){r.session=why(e)}
+    try{await this.K.getLimitedUseToken(this.ac);r.limited='OK'}catch(e){r.limited=why(e)}
+    return r;
+  },
+  async signUp(name,email,pw){
+    const c=await this.U.createUserWithEmailAndPassword(this.auth,email,pw);
+    await this.U.updateProfile(c.user,{displayName:name});
+    try{await this.U.sendEmailVerification(c.user)}catch(_){}
+    return{name,email};
+  },
+  signIn(email,pw){return this.U.signInWithEmailAndPassword(this.auth,email,pw)},
+  reset(email){return this.U.sendPasswordResetEmail(this.auth,email)},
+  signOut(){return this.U.signOut(this.auth)},
+  async chat(system,turns,onText,stopped,modelName){
+    const model=this.I.getGenerativeModel(this.ai,{model:modelName,systemInstruction:system});
+    const r=await model.generateContentStream({contents:turns.map(t=>({role:t.role,parts:[{text:t.text}]}))});
+    let text='',usage=null;
+    // 토큰 사용량: SDK 13.0.0은 스트림을 합친 응답(r.response)에 usageMetadata를 넣지 않으므로, 조각마다 받은 값 중 마지막 것을 쓴다
+    for await(const ch of r.stream){if(ch&&ch.usageMetadata)usage=ch.usageMetadata;if(stopped())break;let t='';try{t=ch.text()}catch(_){}if(t){text+=t;onText(text)}}
+    let finish='';if(!stopped()){try{const res=await r.response;finish=(res.candidates&&res.candidates[0]&&res.candidates[0].finishReason)||''}catch(_){}}
+    return{text,finish,usage};
+  }
+};
+let BK_READY=false;
+
+/* ───────── 첫 화면: 로그인·회원가입·페르소나 ───────── */
+const card=$('card');
+function setState(s){card.dataset.state=s;$('fsLogin').disabled=$('fsSignup').disabled=(s==='unconf')}
+function showTab(which){
+  const login=which==='login';
+  $('tLogin').setAttribute('aria-selected',login);$('tSignup').setAttribute('aria-selected',!login);
+  $('fLogin').hidden=!login;$('fSignup').hidden=login;
+  ['liErr','suErr','liOk'].forEach(id=>{$(id).textContent=''});
+}
+$('tLogin').onclick=()=>showTab('login');$('tSignup').onclick=()=>showTab('signup');
+function authMsg(e){
+  const c=(e&&e.code)||'';
+  if(c==='auth/invalid-email'||c==='auth/missing-email')return'e_email';
+  if(c==='auth/email-already-in-use')return'e_inuse';
+  if(c==='auth/weak-password')return'e_weak';
+  if(['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-login-credentials','auth/missing-password'].includes(c))return'e_cred';
+  if(c==='auth/too-many-requests')return'e_many';
+  if(c==='auth/network-request-failed')return'e_net';
+  return'e_generic';
+}
+function showErr(id,k){const el=$(id);if(!k){el.textContent='';el.removeAttribute('data-k');return}el.dataset.k=k;put(el,k)}
+const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+$('fLogin').addEventListener('submit',async e=>{
+  e.preventDefault();showErr('liErr','');showErr('liOk','');
+  const em=$('liEmail').value.trim(),pw=$('liPw').value;
+  if(!emailOk(em))return showErr('liErr','e_email');if(!pw)return showErr('liErr','e_cred');
+  $('fsLogin').disabled=true;
+  try{await BK.signIn(em,pw);$('liPw').value=''}catch(err){showErr('liErr',authMsg(err))}finally{$('fsLogin').disabled=false}
+});
+$('forgot').onclick=async()=>{
+  showErr('liErr','');showErr('liOk','');
+  const em=$('liEmail').value.trim();if(!emailOk(em))return showErr('liErr','e_email');
+  try{await BK.reset(em);showErr('liOk','resetSent')}catch(err){showErr('liErr',authMsg(err))}
+};
+$('fSignup').addEventListener('submit',async e=>{
+  e.preventDefault();showErr('suErr','');
+  const nm=$('suName').value.trim(),em=$('suEmail').value.trim(),p1=$('suPw').value,p2=$('suPw2').value;
+  if(!nm)return showErr('suErr','e_name');if(!emailOk(em))return showErr('suErr','e_email');
+  if(p1.length<8)return showErr('suErr','e_weak');if(p1!==p2)return showErr('suErr','e_mismatch');
+  if(!$('suAgree').checked)return showErr('suErr','e_agree');
+  $('fsSignup').disabled=true;
+  S.justSigned={name:nm,email:em};
+  try{const u=await BK.signUp(nm,em,p1);$('suPw').value=$('suPw2').value='';onUser(u,'verifySent')}
+  catch(err){S.justSigned=null;showErr('suErr',authMsg(err))}finally{$('fsSignup').disabled=false}
+});
+function personaParts(label){
+  const sp=label.indexOf(' '),em=label.slice(0,sp),rest=label.slice(sp+1);
+  const m=rest.match(/^(.*?)\s*[（(](.*)[)）]\s*$/);return m?[em,m[1],m[2]]:[em,rest,''];
+}
+function renderPersonas(){
+  const box=$('personas');box.replaceChildren();box.setAttribute('aria-label',tr('personaL'));
+  tr('personas').forEach((lab,i)=>{
+    const[em,nm,sb]=personaParts(lab);
+    const b=document.createElement('button');b.type='button';b.className='pcard';b.setAttribute('role','radio');b.setAttribute('aria-checked',i===S.persona);
+    b.tabIndex=i===S.persona?0:-1;b.dataset.s=st('personas');
+    const e1=document.createElement('span');e1.className='em';e1.textContent=em;e1.setAttribute('aria-hidden','true');
+    const e2=document.createElement('span');e2.className='nm';e2.textContent=nm;
+    const e3=document.createElement('span');e3.className='sb';e3.textContent=sb;
+    b.append(e1,e2,e3);
+    b.onclick=()=>{S.persona=i;lsSet('tc_persona',String(i));renderPersonas();box.children[i].focus()};
+    b.onkeydown=ev=>{const n=tr('personas').length;let j=null;
+      if(ev.key==='ArrowRight'||ev.key==='ArrowDown')j=(i+1)%n;if(ev.key==='ArrowLeft'||ev.key==='ArrowUp')j=(i-1+n)%n;
+      if(j!=null){ev.preventDefault();S.persona=j;lsSet('tc_persona',String(j));renderPersonas();box.children[j].focus()}};
+    box.append(b);
+  });
+}
+function renderHello(){if(S.user)$('hello').textContent=tr('hello').replace('{name}',S.user.name)}
+function onUser(u,note){
+  // 가입 직후에는 로그인 알림이 이름 저장보다 먼저 올 수 있어, 방금 가입한 이름을 우선한다
+  if(u&&S.justSigned&&S.justSigned.email===u.email)u={...u,name:S.justSigned.name};
+  S.user=u;
+  if(u){setState('in');renderHello();renderPersonas()}
+  else{S.justSigned=null;showTab('login');if(BK_READY)setState('out');if(!$('chat').hidden)showLanding()}
+  if(note){/* 가입 직후 안내는 인사말 아래에 잠깐 */const p=document.createElement('p');p.className='ok';p.dataset.k=note;put(p,note);$('hello').after(p);setTimeout(()=>p.remove(),8000)}
+}
+$('logoutBtn').onclick=()=>BK.signOut();
+$('startBtn').onclick=()=>{if(!S.user)return;S.startLang=LANG;showChat();begin()};
+
+/* ───────── 대화 화면 ───────── */
+const logEl=$('log');
+const clean=s=>s.replace(/\*\*(.+?)\*\*/g,'$1').replace(/^#{1,6}\s+/gm,'');
+/* v3.3.13: 마지막 말풍선이 보이게 아래로 내린다. pinned = 아래에 붙어 있는 중(사용자가 직접 위로 올리면 풀림).
+   scroll 이벤트는 우리가 내린 것과 사용자가 올린 것을 구별하지 못하므로, 사용자 조작(휠·터치·키) 직후 800ms 안의 scroll만 사용자 것으로 본다. */
+const centerEl=$('center');let pinned=true,lastUser=0,sePending=false;
+const nearEnd=()=>centerEl.scrollHeight-centerEl.scrollTop-centerEl.clientHeight<72;
+const userTouch=()=>{lastUser=performance.now()};
+['wheel','touchstart','touchmove','pointerdown'].forEach(t=>centerEl.addEventListener(t,userTouch,{passive:true}));
+centerEl.addEventListener('keydown',userTouch);
+centerEl.addEventListener('scroll',()=>{const n=performance.now();if(n-lastUser<800){lastUser=n;pinned=nearEnd()}},{passive:true});
+function scrollNow(){centerEl.scrollTop=centerEl.scrollHeight}
+function scrollEnd(force){
+  if(force===true)pinned=true;
+  if(!pinned)return;
+  scrollNow();
+  if(!sePending){sePending=true;requestAnimationFrame(()=>{sePending=false;if(pinned)scrollNow()})}   // 레이아웃이 끝난 뒤 한 번 더
+}
+if('ResizeObserver' in window){const ro=new ResizeObserver(()=>{if(pinned)scrollNow()});ro.observe(logEl);ro.observe(centerEl)}   // 말풍선 높이·화면 높이(키보드)가 바뀌면 다시 내린다
+function bubble(cls,text){const li=document.createElement('li');li.className=cls;li.textContent=text;logEl.append(li);scrollEnd(true);return li}
+/* v3.3.13: 화면 높이 = 보이는 영역(visualViewport). 모바일 키보드가 열리면 입력창이 가려지지 않게 --vvh·--vvt를 갱신한다 */
+(function(){
+  const root=document.documentElement,vv=window.visualViewport;let raf=0;
+  function apply(){
+    raf=0;
+    const h=vv?vv.height:innerHeight,t=vv?vv.offsetTop:0;
+    root.style.setProperty('--vvh',Math.round(h)+'px');root.style.setProperty('--vvt',Math.round(t)+'px');
+    root.classList.toggle('kb',!!vv&&innerHeight-vv.height>120);   // 키보드가 열렸으면(아래 안전 여백 불필요)
+    scrollEnd();
+  }
+  const schedule=()=>{if(!raf)raf=requestAnimationFrame(apply)};
+  if(vv){vv.addEventListener('resize',schedule);vv.addEventListener('scroll',schedule)}
+  addEventListener('resize',schedule);addEventListener('orientationchange',schedule);
+  apply();
+})();
+function sysNote(k,retry,detail){
+  const li=bubble('sys','');const sp=document.createElement('span');sp.dataset.k=k;put(sp,k);li.append(sp);
+  if(retry){const b=document.createElement('button');b.type='button';b.className='retry';b.dataset.k='retry';put(b,'retry');b.onclick=()=>{li.remove();if(lastIsUser())ask()};li.append(b)}
+  addDetail(li,detail);
+  return li;
+}
+function addDetail(li,text){   // v3.3.11: 오류 원인 '자세히'(접힌 상태). 개발자 콘솔이 없는 태블릿·휴대폰에서도 원인을 볼 수 있게
+  if(!text)return;
+  const d=document.createElement('details'),su=document.createElement('summary'),c=document.createElement('code');
+  su.dataset.k='q_detail';put(su,'q_detail');c.textContent=text;d.append(su,c);li.append(d);
+}
+const lastIsUser=()=>{const l=S.turns[S.turns.length-1];return!!(l&&l.role==='user')};   // v3.3.10: 답을 기다리는 사용자 차례가 있을 때만 다시 보낸다
+function refreshDock(){
+  const held=!!S.hold;
+  $('send').hidden=S.busy;$('stopb').hidden=!S.busy;
+  document.querySelectorAll('.cmd').forEach(x=>x.disabled=S.busy||S.dead||held);
+  $('send').disabled=S.dead||held;$('msg').disabled=S.dead;   // 대기 중에도 입력창은 열어 둔다(글을 미리 써 둘 수 있게)
+}
+function setBusy(b){S.busy=b;refreshDock()}
+
+/* ───────── 한도(429) 대기 — v3.3.10 제안 ─────────
+   429를 받으면 응답 안의 원인 정보(google.rpc.QuotaFailure·RetryInfo)를 읽어 네 가지로 나눈다.
+     minute  : 분당 한도(quotaId에 PerMinute)        → 응답이 알려 준 시간(없으면 HOLD_DEFAULT_SEC)만큼 기다린 뒤 '다시 보내기'
+     day     : 하루 한도(quotaId에 PerDay)           → 응답이 알려 준 시간, 없으면 다음 '미국 태평양 시간 자정'까지 기다림
+               (근거: Gemini API 문서 "Requests per day (RPD) quotas reset at midnight Pacific time")
+     zero    : 한도 값이 0(quotaValue 0 또는 'limit: 0') → 기다려도 풀리지 않으므로 관리자 안내만
+     unknown : 원인 정보가 없음(모델 혼잡 등)         → HOLD_DEFAULT_SEC 뒤 한 번만 다시 보내기
+   대기 중에는 요청을 보내지 않는다. 같은 모델로 자동 재시도는 하지 않는다(재시도도 한도를 쓰기 때문).
+   Firebase AI Logic 중계가 이 원인 정보를 그대로 넘겨주는지는 실제 429로 확인하지 못했다 → 없으면 unknown으로 처리된다.
+   v3.3.11: 위 판단을 '모델별 쉬는 시간(COOL)'으로 바꿨다. 한도는 모델마다 따로 잡히므로(quotaId …PerProjectPerModel…)
+     한 모델이 429면 그 모델만 쉬게 하고 MODELS의 다음 모델로 한 번 넘어간다. 404(모델 없음·접근 불가)도 그 모델만 다음 태평양 자정까지 쉬게 한다.
+     zero(한도 0)는 다음 태평양 자정까지 쉬게 해서 하루 한 번만 다시 확인한다.
+     모든 모델이 쉬는 중일 때만 S.hold(화면 대기)를 만든다. 가장 먼저 풀리는 시각까지 10분이 넘으면 '하루 한도' 안내(시각 표시)로 보여 준다. */
+const HOLD_DEFAULT_SEC=60;  // 응답에 대기 시간이 없을 때의 기본값. 분당 한도가 '1분' 단위라는 정의에 맞춘 값이며 Google 권장값은 아니다.
+S.hold=null;                // 모든 모델이 쉬는 중일 때만: {kind, until(ms), ids:[오류 요약 줄]}
+let holdLi=null,holdTimer=0,COOL={},chainErrs=[],acTried=false;   // acTried: v3.3.12 이번 보내기에서 App Check 점검·재시도를 이미 했는지(한 번만)   // COOL: 모델별 {kind, until}. chainErrs: 이번 보내기 한 번에서 난 오류 요약(모델 차례 시도 포함)
+function pacificOffset(t){  // 미국 태평양 시간의 그 시각 UTC 차이(ms). 서머타임 자동 반영(브라우저 Intl 사용)
+  const p={};new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric'})
+    .formatToParts(new Date(t)).forEach(x=>{p[x.type]=x.value});
+  return{off:Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-Math.floor(t/1000)*1000,y:+p.year,m:+p.month,d:+p.day};
+}
+function nextPacificMidnight(now){
+  const a=pacificOffset(now),wall=Date.UTC(a.y,a.m-1,a.d+1);   // 태평양 시간 기준 '내일 0시'
+  let t=wall-a.off;t=wall-pacificOffset(t).off;                // 서머타임이 바뀌는 날을 한 번 더 보정
+  return t;
+}
+function quotaInfo(e){
+  const cd=(e&&e.customErrorData)||{},det=Array.isArray(cd.errorDetails)?cd.errorDetails:[];
+  const msg=String((e&&e.message)||'');
+  let wait=null,zero=false;const ids=[];
+  det.forEach(d=>{
+    const t=String((d&&d['@type'])||'');
+    if(/RetryInfo/.test(t)){const m=String(d.retryDelay||'').match(/^([\d.]+)s$/);if(m)wait=Math.ceil(+m[1])}
+    if(/QuotaFailure/.test(t)&&Array.isArray(d.violations))d.violations.forEach(v=>{
+      const dim=v.quotaDimensions||{};
+      ids.push([v.quotaId||v.quotaMetric||'',dim.model||'',v.quotaValue!=null?'limit '+v.quotaValue:''].filter(Boolean).join(' · '));
+      if(String(v.quotaValue)==='0')zero=true;
+    });
+  });
+  if(wait==null){const m=msg.match(/retry in ([\d.]+)s\b/i);if(m)wait=Math.ceil(+m[1])}
+  if(/limit:\s*0(?![\d.])/.test(msg))zero=true;
+  const all=ids.join(' ')+' '+msg;
+  const kind=zero?'zero':/PerDay/i.test(all)?'day':/PerMinute/i.test(all)?'minute':'unknown';
+  return{kind,wait,ids};
+}
+function saveCool(){        // 끝난 항목은 지우고 이 브라우저에 기억(새로고침해도 막힌 모델로 바로 다시 보내지 않게)
+  const now=Date.now();Object.keys(COOL).forEach(m=>{if(!(COOL[m].until>now))delete COOL[m]});
+  lsSet('tc_cool',Object.keys(COOL).length?JSON.stringify(COOL):'');
+}
+function loadCool(){
+  COOL={};
+  try{const o=JSON.parse(lsGet('tc_cool')||'{}');MODELS.forEach(m=>{const c=o&&o[m];if(c&&typeof c.until==='number')COOL[m]={kind:String(c.kind),until:c.until}})}catch(_){}
+  saveCool();lsSet('tc_hold','');   // v3.3.10의 기억 키는 더 쓰지 않는다
+}
+const pickModel=()=>{const now=Date.now();return MODELS.find(m=>!(COOL[m]&&COOL[m].until>now))||null};
+const allMissing=()=>MODELS.every(m=>COOL[m]&&COOL[m].kind==='missing'&&COOL[m].until>Date.now());
+function coolModel(m,info){
+  const now=Date.now();let until;
+  if(info.kind==='day')until=info.wait!=null?now+info.wait*1000:nextPacificMidnight(now);
+  else if(info.kind==='zero'||info.kind==='missing')until=nextPacificMidnight(now);
+  else until=now+(info.wait!=null?info.wait:HOLD_DEFAULT_SEC)*1000;
+  COOL[m]={kind:info.kind,until};saveCool();
+}
+function holdFromCool(){    // 모든 모델이 쉬는 중일 때의 화면 대기. 가장 먼저 풀리는 모델 기준
+  const now=Date.now();let until=Infinity,kind='unknown',allZero=true;
+  MODELS.forEach(m=>{const c=COOL[m];if(!c||!(c.until>now))return;
+    if(c.kind!=='zero'&&c.kind!=='missing')allZero=false;
+    if(c.until<until){until=c.until;kind=c.kind}});
+  if(!isFinite(until))return null;
+  if(allZero)kind='zero';
+  else if(until-now>10*60*1000||kind==='day'||kind==='zero'||kind==='missing')kind='day';
+  else if(kind!=='minute')kind='unknown';
+  return{kind,until,ids:chainErrs.slice()};
+}
+function holdLeft(){        // 남은 초. 대기 없음 0
+  const h=S.hold;if(!h)return 0;
+  const s=Math.ceil((h.until-Date.now())/1000);
+  if(s<=0){endHold();return 0}
+  return s;
+}
+function fmtWhen(t){try{return new Intl.DateTimeFormat(C.locale||LANG,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(t))}catch(_){return new Date(t).toLocaleString()}}
+function holdText(s){
+  const h=S.hold;
+  if(h.kind==='zero')return tr('q_zero');
+  if(h.kind==='day')return tr('q_day').replace('{t}',fmtWhen(h.until));
+  return tr(h.kind==='minute'?'q_minute':'q_unknown').replace('{s}',s);
+}
+function showHold(){
+  if(holdLi)holdLi.remove();
+  holdLi=bubble('sys hold','');
+  const sp=document.createElement('span');sp.className='ht';holdLi.append(sp);
+  if(S.hold.ids&&S.hold.ids.length)addDetail(holdLi,S.hold.ids.join('\n'));
+  clearInterval(holdTimer);holdTimer=setInterval(tickHold,1000);tickHold();
+}
+function tickHold(){
+  const s=holdLeft();if(!S.hold)return;   // holdLeft가 시간이 다 되면 endHold를 부른다
+  if(holdLi){const sp=holdLi.querySelector('.ht');sp.textContent=holdText(s);sp.dataset.s='P'}
+  $('msg').placeholder=(S.hold.kind==='zero'||S.hold.kind==='day')?tr('q_ph_closed'):tr('q_ph_wait').replace('{s}',s);
+  refreshDock();
+}
+function endHold(){
+  S.hold=null;clearInterval(holdTimer);saveCool();
+  $('msg').placeholder=tr('inputPh');
+  const li=holdLi;holdLi=null;
+  if(li&&li.isConnected){
+    const sp=li.querySelector('.ht');sp.dataset.k='q_ready';put(sp,'q_ready');
+    if(lastIsUser()){const b=document.createElement('button');b.type='button';b.className='retry';b.dataset.k='retry';put(b,'retry');b.onclick=()=>{li.remove();if(lastIsUser())ask()};li.append(b)}
+  }
+  refreshDock();
+}
+(function restoreHold(){    // 이 브라우저에 남은 모델별 쉬는 시간. 모두 쉬는 중이면 시작해도 요청을 보내지 않는다
+  loadCool();if(!pickModel()&&!allMissing())S.hold=holdFromCool();
+})();
+function errLine(e,model){  // '자세히' 한 줄: HTTP 상태 · 모델 · 원인 이름 · Google이 보낸 원문 앞부분(대화 내용은 들어가지 않음)
+  const cd=(e&&e.customErrorData)||{};
+  let m=String((e&&e.message)||'').replace(/^AI: Error fetching from \S+:\s*/,'').replace(/\s*\(AI\/[\w-]+\)\s*$/,'');
+  const j=m.indexOf(' [{');if(j>0)m=m.slice(0,j);   // 뒤에 붙는 details JSON은 원인 이름으로 따로 보여 준다
+  const ids=quotaInfo(e).ids.map(s=>s.split(' · ').filter(x=>x!==model).join(' · '));   // 모델 이름은 앞에 한 번만
+  return[cd.status?'HTTP '+cd.status:String((e&&e.code)||'error'),model,ids.join(' / '),m.trim().slice(0,280)].filter(Boolean).join(' · ');
+}
+function logUsage(u,model){ // 토큰 사용량만 콘솔에 남긴다(대화 내용 없음). 기록 상한 결정을 실제 숫자로 하기 위한 것
+  try{console.info('[TC v3.3.13] tokens',{model,prompt:u.promptTokenCount,output:u.candidatesTokenCount,thoughts:u.thoughtsTokenCount,total:u.totalTokenCount,turns:S.turns.length})}catch(_){}
+}
+function logErr(e,model){   // 오류 원인 정보만 콘솔에 남긴다(대화 내용 없음)
+  try{const cd=(e&&e.customErrorData)||{};console.warn('[TC v3.3.13] chat error',{model,status:cd.status,code:e&&e.code,details:cd.errorDetails,message:String((e&&e.message)||'').slice(0,600)})}catch(_){}
+}
+const MAX_CHARS=120000;
+function turnsForModel(){
+  let t=S.turns.map(x=>({role:x.role==='assistant'?'model':'user',text:x.content}));
+  const len=()=>t.reduce((n,x)=>n+x.text.length,0);
+  while(t.length>1&&len()>MAX_CHARS){t.shift();while(t.length>1&&t[0].role==='model')t.shift()}
+  return t;
+}
+function chatErr(e){
+  const s=String((e&&(e.code||''))+' '+(e&&e.message||'')+' '+(e&&e.customErrorData&&e.customErrorData.status||''));
+  const st=Number(e&&e.customErrorData&&e.customErrorData.status)||0;   // v3.3.10: HTTP 상태 번호가 있으면 그것을 먼저 본다
+  if(st===429)return['quota',true];
+  if(st===401||st===403)return['setupAI',false];
+  if(!st&&/\b429\b|RESOURCE_EXHAUSTED|quota/i.test(s))return['quota',true];
+  if(!st&&/app.?check|PERMISSION_DENIED|\b403\b|API_KEY|api key|SERVICE_DISABLED|not.?enabled|unauthenticated|\b401\b/i.test(s))return['setupAI',false];
+  if(/SAFETY|blocked|PROHIBITED/i.test(s))return['refused',false];
+  return['failed',true];
+}
+async function ask(fallback){   // fallback: v3.3.11 다음 모델로 넘어가 다시 부를 때 true
+  if(S.busy)return;
+  if(!BK_READY){sysNote('notConfigured');return}
+  if(!S.user){sysNote('needLogin');return}
+  if(!fallback){chainErrs=[];acTried=false}
+  if(holdLeft()){showHold();return}   // v3.3.10: 한도 대기 중에는 요청을 보내지 않는다
+  const model=pickModel();
+  if(!model){                          // v3.3.11: 모든 모델이 쉬는 중
+    if(allMissing()){sysNote('setupAI',false,chainErrs.join('\n'));return}
+    S.hold=holdFromCool();if(S.hold)showHold();return;
+  }
+  setBusy(true);S.stop=false;
+  const li=bubble('ai typing',tr('thinking'));
+  field.setMode('think');let got=false,next=false;
+  try{
+    const r=await BK.chat(PROMPT+appContext(),turnsForModel(),text=>{
+      if(S.stop)return;
+      if(!got){got=true;field.setMode('idle');field.emit('answer');li.classList.remove('typing')}
+      li.textContent=clean(text);scrollEnd();
+    },()=>S.stop,model);
+    field.setMode('idle');
+    if(r.usage)logUsage(r.usage,model);
+    if(!r.text.trim()){li.remove();if(!S.stop)sysNote(/SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(r.finish)?'refused':'failed',!/SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(r.finish))}
+    else{if(!got)field.emit('answer');li.classList.remove('typing');li.textContent=clean(r.text);S.turns.push({role:'assistant',content:r.text});if(r.finish==='MAX_TOKENS')sysNote('truncated')}
+  }catch(e){
+    field.setMode('idle');li.remove();
+    logErr(e,model);chainErrs.push(errLine(e,model));
+    const st=Number(e&&e.customErrorData&&e.customErrorData.status)||0;
+    const[k,retry]=chatErr(e);
+    if(k==='quota'||st===404){        // v3.3.11: 그 모델만 쉬게 하고, 쉬지 않는 다음 모델이 있으면 한 번 넘어간다
+      coolModel(model,st===404?{kind:'missing',wait:null}:quotaInfo(e));
+      if(pickModel())next=true;
+      else if(allMissing())sysNote('setupAI',false,chainErrs.join('\n'));
+      else{S.hold=holdFromCool();if(S.hold)showHold()}
+    }else if(st===401&&!acTried){     // v3.3.12: App Check 토큰 401 → 스스로 점검. 일반 토큰은 받아지는데 거절됐으면 일회용 토큰으로 한 번만 다시 보낸다
+      acTried=true;
+      const ac=await BK.acCheck();
+      chainErrs.push('App Check self-check · session token: '+ac.session+' · limited-use token: '+ac.limited+' · sent: '+(BK.limited?'limited-use':'session'));
+      if(ac.session==='OK'&&ac.limited==='OK'&&!BK.limited){BK.setLimited(true);next=true}
+      else sysNote('setupAI',false,chainErrs.join('\n'));
+    }else sysNote(k,retry,chainErrs.join('\n'));
+  }finally{setBusy(false);scrollEnd(true);if(next&&!S.stop)ask(true)}
+}
+function sendText(v){
+  v=v.trim();if(!v||S.busy||S.dead)return;
+  if(holdLeft()){showHold();return}
+  // v3.3.10: 앞 요청이 실패해 사용자 차례가 답 없이 남아 있으면 새 글을 그 차례에 합친다(사용자 차례 연속 방지).
+  // 남아 있는 것이 앱의 '시작하기' 신호뿐이면 사용자의 첫 글로 바꾼다(지침 10장 '고민을 말했다면'으로 이어지게).
+  const last=S.turns[S.turns.length-1];
+  if(last&&last.role==='user')last.content=last.content===START_TURN?v:last.content+'\n\n'+v;
+  else S.turns.push({role:'user',content:v});
+  logEl.querySelectorAll('li.sys .retry').forEach(b=>b.remove());   // 새 글에 앞 글이 함께 실리므로, 남아 있던 '다시 보내기'는 치운다(중복 요청 방지)
+  bubble('me',v);field.emit('user');ask();
+}
+const AUTO_H=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));   // v3.3.12: 브라우저가 높이를 맞추면 글자마다 높이를 재지 않는다
+if(AUTO_H)$('msg').classList.add('fs');
+let growQ=0;
+function grow(){if(AUTO_H||growQ)return;growQ=requestAnimationFrame(()=>{growQ=0;const m=$('msg');m.style.height='auto';m.style.height=Math.min(m.scrollHeight,140)+'px'})}   // v3.3.13: 프레임당 한 번
+$('form').addEventListener('submit',e=>{
+  e.preventDefault();
+  if(S.busy||S.dead)return;                 // v3.3.10: 답을 기다리는 동안 Enter를 눌러도 쓴 글이 지워지지 않게
+  if(holdLeft()){showHold();return}         // 대기 중에는 글을 그대로 두고 안내만 다시 보여 준다
+  const v=$('msg').value;$('msg').value='';grow();sendText(v);
+});
+$('msg').addEventListener('input',()=>{field.typing();grow()});
+['beforeinput','compositionstart','compositionupdate'].forEach(t=>$('msg').addEventListener(t,()=>field.typing()));   // v3.3.13: 키를 누르는 순간부터 배경은 쉰다(한글 조합 포함)
+$('msg').addEventListener('focus',()=>setTimeout(()=>scrollEnd(true),250));   // 키보드가 열린 뒤 마지막 말풍선이 보이게
+$('msg').addEventListener('focus',()=>field.setFocus(true));
+$('msg').addEventListener('blur',()=>field.setFocus(false));
+document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('#landing'))sig.typing()},true);
+$('msg').addEventListener('keydown',e=>{field.typing();if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();$('form').requestSubmit()}});
+$('stopb').onclick=()=>{S.stop=true};
+document.querySelectorAll('.cmd').forEach(b=>b.onclick=()=>sendText(tr(b.dataset.cmd)));
+
+function showChat(){
+  $('landing').hidden=true;$('chat').hidden=false;
+  document.body.classList.remove('on-landing');document.body.classList.add('on-chat');
+  dispatchEvent(new Event('resize'));requestAnimationFrame(()=>field.layout());
+}
+function showLanding(){
+  S.stop=true;
+  $('chat').hidden=true;$('landing').hidden=false;
+  document.body.classList.remove('on-chat');document.body.classList.add('on-landing');
+  requestAnimationFrame(sig.resize);
+}
+function begin(){
+  S.turns=[{role:'user',content:START_TURN}];S.dead=false;logEl.replaceChildren();
+  $('pname').textContent=tr('personas')[S.persona];
+  setBusy(false);field.setMode('idle');field.emit('answer');ask();
+}
+$('homeBtn').onclick=showLanding;
+$('restartBtn').onclick=()=>{S.stop=true;setTimeout(begin,0)};
+$('motionBtn').onclick=e=>{   // v3.3.12: 움직임 줄이기(정지 그림) / 켜기. 이 브라우저에 기억
+  const st=!MOTION.still();MOTION.set(st?'still':'full');field.setStill(st);sig.setStill(st);
+  e.currentTarget.setAttribute('aria-pressed',st);put($('motionLabel'),st?'motionOn':'motionOff');
+};
+$('soundBtn').onclick=e=>{const on=sound.toggle();e.currentTarget.setAttribute('aria-pressed',on);put($('soundLabel'),on?'soundOff':'soundOn')};
+addEventListener('pointerdown',e=>{
+  if($('chat').hidden)return;
+  if(e.target.closest('button,textarea,input,select,label,.dock,.bar,.log li,.cmds,.foot'))return;
+  field.emit('tap',e.clientX,e.clientY);
+});
+
+/* ───────── 언어 전환 ───────── */
+const loadedFonts=new Set();
+function loadFont(code){
+  if(!FONTS[code]||loadedFonts.has(code))return;loadedFonts.add(code);
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?'+FONTS[code]+'&display=swap';document.head.append(l);
+}
+function applyStatic(){
+  document.querySelectorAll('[data-k]').forEach(n=>put(n,n.dataset.k));
+  $('msg').placeholder=tr('inputPh');$('send').setAttribute('aria-label',tr('send'));$('stopb').setAttribute('aria-label',tr('stop'));
+  $('sig').setAttribute('aria-label',tr('signalAlt'));
+  const ul=$('cautions');ul.replaceChildren();tr('cautions').forEach((t,i)=>{const li=document.createElement('li');put(li,'cautions',i);ul.append(li)});
+  renderPersonas();renderHello();
+  if(!$('chat').hidden)$('pname').textContent=tr('personas')[S.persona];
+  put($('soundLabel'),sound.isOn()?'soundOff':'soundOn');
+  {const st=MOTION.still();put($('motionLabel'),st?'motionOn':'motionOff');$('motionBtn').setAttribute('aria-pressed',st)}
+}
+function setLang(code){
+  if(!CATALOGS[code])code='ko';
+  LANG=code;C=CATALOGS[code];document.documentElement.lang=code;loadFont(code);
+  document.querySelectorAll('select.lang').forEach(s=>s.value=code);
+  applyStatic();if(BK.setLang)BK.setLang(code);
+}
+document.querySelectorAll('select.lang').forEach(s=>{
+  LANGS.forEach(([c,n])=>{const o=document.createElement('option');o.value=c;o.textContent=n;o.lang=c;s.append(o)});
+  s.onchange=e=>{setLang(e.target.value);try{location.hash=e.target.value}catch(_){}};
+});
+addEventListener('hashchange',()=>{const c=decodeURIComponent(location.hash.slice(1));if(CATALOGS[c]&&c!==LANG)setLang(c)});
+
+document.body.classList.add('on-landing');
+setLang(decodeURIComponent(location.hash.slice(1))||'ko');
+showTab('login');
+BK.init(u=>onUser(u)).then(ok=>{
+  BK_READY=!!ok;if(BK.setLang)BK.setLang(LANG);
+  if(!ok)setState('unconf');else if(!S.user)setState('out');
+}).catch(()=>{BK_READY=false;setState('unconf')});
+</script>
+
+</html>
