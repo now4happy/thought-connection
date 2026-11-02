@@ -11,7 +11,7 @@
        바꾼 방식은 이 브라우저에 기억한다(tc_ac_limited). 토큰 발급 자체가 실패하면 그 오류 문장을 '자세히'에 보여 주고 멈춘다(콘솔 설정 문제).
     B) 움직임 부담 줄이기: 글을 치는 동안(마지막 입력 뒤 1.2초) 배경을 그리지 않고, 입력창에 커서가 있으면 초당 약 15번만 그린다.
        터치 기기에서는 배경 위 블러(backdrop-filter)를 끄고 바탕을 진하게, 캔버스 배율 상한 2→1.5, 작은 호 개수를 줄인다.
-       대화 화면 아래에 '움직임 줄이기' 버튼(정지 그림 1장)을 둔다. 기본값은 기기 설정을 따른다(MOTION_DEFAULT, 결정 대기).
+       대화 화면 아래에 '움직임 줄이기' 버튼(정지 그림 1장)을 둔다. 기본값은 '멈춤'(MOTION_DEFAULT='still', 사용자 결정 2026-11-02).
        입력창 높이는 브라우저가 지원하면 CSS(field-sizing)로 맞춰 글자마다 하는 높이 계산을 없앴다.
   v3.3.11에서 바뀐 것 — 사용자 결정(2026-11-02 07:19): "모델 변경, 품질보다 실행 건수가 중요" / "무료로 계속" / "__TC_BACKEND 필요 없으면 제거"
     1) 모델: gemini-3.8-flash 하나 → MODELS 목록(gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-3.8-flash) 차례로 쓴다.
@@ -297,7 +297,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a),TAU=Math.PI*2;
 /* ───────── 물결 고리 장 (v3.3.5와 같음) ───────── */
 /* v3.3.12: 움직임 설정. 'still'=멈춤(정지 그림 1장), 'full'=움직임. 저장값이 없으면 MOTION_DEFAULT를 따른다.
    MOTION_DEFAULT 'auto' = 기기의 '애니메이션 줄이기'(prefers-reduced-motion)를 따름. 'still'로 바꾸면 처음부터 멈춤(결정 대기). */
-const MOTION_DEFAULT='auto';
+const MOTION_DEFAULT='still';   // 사용자 결정(2026-11-02): 처음부터 멈춤
 const MOTION={
   get(){let v='';try{v=localStorage.getItem('tc_motion')||''}catch(_){}return v==='still'||v==='full'?v:MOTION_DEFAULT},
   still(){const v=this.get();return v==='still'||(v==='auto'&&matchMedia('(prefers-reduced-motion: reduce)').matches)},
