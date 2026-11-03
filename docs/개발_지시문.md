@@ -126,6 +126,21 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 
 이 4가지를 다 시도해도 안 열리면, 그때 §6 멈춤 규칙으로 간다. 전달문에는 어느 주소가, 어떤 오류로 안 열렸는지 그대로 적는다. "읽었다"고 거짓말하지 않는다. 그리고 다음 과제는 링크 열림 원인을 찾는 것이지, zip 첨부로 돌아가는 것이 아니다.
 
+### 붙여넣기용 주소 목록 (클로드 환경용)
+
+일부 AI 환경에서는 지시문 안에 적힌 주소가 열리지 않고, **사용자가 채팅에 직접 적은 주소만** 열린다. 그 경우 사용자는 아래 주소들을 클로드 방 채팅에 직접 붙여넣는다. 아래 주소는 Muse가 raw 200으로 확인한 것들이다.
+
+- 지시문: `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/개발_지시문.md`
+- 지시문 (영문 파일명): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/INSTRUCTION.md`
+- 마인드맵 v1.8: `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/생각의연결_마인드맵_v1.8.html`
+- 마인드맵 v1.8 (영문 파일명): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/mindmap-v1.8.html`
+- START: `https://raw.githubusercontent.com/now4happy/thought-connection/main/START.md`
+- STATUS: `https://raw.githubusercontent.com/now4happy/thought-connection/main/STATUS.md`
+- 좋은질문 원본 v2.4: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/좋은질문_원본_내면명탐정_v2.4.md`
+- 좋은질문 프롬프트·웹설계 정리: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/좋은질문_프롬프트_및_웹설계_정리.md`
+- 책 초안 v3.3.0: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/생각의연결_책_초안_v3.3.0.md`
+- 통합계획 v3.3.0: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/V3.3.0_통합계획.md`
+
 ## 6. 멈추면 바로 Muse 전달문 만드는 규칙 (앞으로 계속 적용)
 
 작업이 어떤 이유로든 멈추면 (저장소 접근 거절, 웹 주소 차단, 환경 제한, 파일 없음 등), 멈춘 지점에서 **바로 Muse에게 보낼 전달문을 만든다.** 사용자에게 선택지만 묻고 멈추지 않는다.
@@ -156,6 +171,7 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 - **2026-11-03: 지시문 깃허브 공개 + 링크 공유 방식.** 지시문을 main `docs/개발_지시문.md`에 올리고, 다른 AI에게는 링크만 준다. 다른 AI는 그 링크에 가서 이 문서를 읽고 시작한다. 전체 압축파일(zip)은 깃허브에 올리지 않는다. 개발이 끝날 때마다 이 §8에 적어서 다음 작업이 이어지게 한다.
 - **2026-11-03: STATUS 동기화.** 로컬 COLLAB_STATUS.md를 main STATUS.md로 동기화했다. 이후로는 STATUS가 최신 상태를 정한다.
 - **2026-11-03: 링크 열림 원칙.** 링크가 안 열리면 예전 방식(zip 첨부)으로 돌아가지 않고, 링크가 열리는 방식을 다시 찾는다. 영문 파일명 복사본(`docs/INSTRUCTION.md`, `docs/mindmap-v1.8.html`)을 main에 두고, raw → 웹 페이지 → Pages → jsDelivr 순서로 시도하는 방법을 §5에 적었다.
+- **2026-11-03: 클로드 환경 제약 확인 + staging 원본 업로드.** 일부 AI 환경(클로드)에서는 지시문 안의 주소가 열리지 않고 사용자가 채팅에 직접 적은 주소만 열린다. 그래서 §5에 붙여넣기용 주소 목록을 추가했다. staging 원본 4개는 지시문 §5 목록에는 있었으나 staging에 올라가 있지 않아 404였다. staging에 올려서 raw 200을 확인했다. 파일명 정규화(NFC) 문제는 아니었다.
 - **2026-11-03: 방향 전환.** 페이지 작은 수정 맴돔 중단. 큰 틀 우선, 작은 부분 고치기는 나중에. v3.3.14(실기기 자동 스크롤·타이핑 딜레이) 보류. 깃허브 지시문 중심, 마인드맵 중심, 다른 AI 스스로 문서 판단, 멈추면 바로 Muse 전달문 규칙 추가. 지시문·마인드맵 v1.8 작성.
 - **2026-11-02: 공개 페이지 바로 올리기.** 검토 통과한 새 버전은 바로 main에 올리고 사용자에게 페이지 열어보라고 안내. 4bot 서버 적용·매매 봇 변경에는 적용 안 됨.
 - **2026-11-02: 라이브 페이지 v3.3.13.** 스크롤·키 반응 수정. 실기기 테스트: 화면 보임 좋아짐, 자동 스크롤 안 내려감(보류), 타이핑 약간 딜레이 남음(보류).
