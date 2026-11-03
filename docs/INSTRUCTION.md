@@ -141,6 +141,12 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 - 책 초안 v3.3.0: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/생각의연결_책_초안_v3.3.0.md`
 - 통합계획 v3.3.0: `https://raw.githubusercontent.com/now4happy/thought-connection/staging/docs/원본/V3.3.0_통합계획.md`
 
+영문 파일명 복사본 (main, 내용 동일, 파일명만 영문):
+- 좋은질문 원본 v2.4 (영문): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/good-question-origin-v2.4.md`
+- 좋은질문 프롬프트·웹설계 정리 (영문): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/good-question-prompt-design.md`
+- 책 초안 v3.3.0 (영문): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/book-draft-v3.3.0.md`
+- 통합계획 v3.3.0 (영문): `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/integration-plan-v3.3.0.md`
+
 ## 6. 멈추면 바로 Muse 전달문 만드는 규칙 (앞으로 계속 적용)
 
 작업이 어떤 이유로든 멈추면 (저장소 접근 거절, 웹 주소 차단, 환경 제한, 파일 없음 등), 멈춘 지점에서 **바로 Muse에게 보낼 전달문을 만든다.** 사용자에게 선택지만 묻고 멈추지 않는다.
@@ -172,6 +178,7 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 - **2026-11-03: STATUS 동기화.** 로컬 COLLAB_STATUS.md를 main STATUS.md로 동기화했다. 이후로는 STATUS가 최신 상태를 정한다.
 - **2026-11-03: 링크 열림 원칙.** 링크가 안 열리면 예전 방식(zip 첨부)으로 돌아가지 않고, 링크가 열리는 방식을 다시 찾는다. 영문 파일명 복사본(`docs/INSTRUCTION.md`, `docs/mindmap-v1.8.html`)을 main에 두고, raw → 웹 페이지 → Pages → jsDelivr 순서로 시도하는 방법을 §5에 적었다.
 - **2026-11-03: 클로드 환경 제약 확인 + staging 원본 업로드.** 일부 AI 환경(클로드)에서는 지시문 안의 주소가 열리지 않고 사용자가 채팅에 직접 적은 주소만 열린다. 그래서 §5에 붙여넣기용 주소 목록을 추가했다. staging 원본 4개는 지시문 §5 목록에는 있었으나 staging에 올라가 있지 않아 404였다. staging에 올려서 raw 200을 확인했다. 파일명 정규화(NFC) 문제는 아니었다.
+- **2026-11-03: 필수 문서 영문 복사본 승인.** 사용자가 승인해서 원본 4개의 영문 파일명 복사본을 main `docs/`에 두었다. 내용은 원본과 동일하고 파일명만 영문이다. 책 초안은 서문 + 파트별 도입부만 있는 초안이지 전체 원고가 아니다.
 - **2026-11-03: 방향 전환.** 페이지 작은 수정 맴돔 중단. 큰 틀 우선, 작은 부분 고치기는 나중에. v3.3.14(실기기 자동 스크롤·타이핑 딜레이) 보류. 깃허브 지시문 중심, 마인드맵 중심, 다른 AI 스스로 문서 판단, 멈추면 바로 Muse 전달문 규칙 추가. 지시문·마인드맵 v1.8 작성.
 - **2026-11-02: 공개 페이지 바로 올리기.** 검토 통과한 새 버전은 바로 main에 올리고 사용자에게 페이지 열어보라고 안내. 4bot 서버 적용·매매 봇 변경에는 적용 안 됨.
 - **2026-11-02: 라이브 페이지 v3.3.13.** 스크롤·키 반응 수정. 실기기 테스트: 화면 보임 좋아짐, 자동 스크롤 안 내려감(보류), 타이핑 약간 딜레이 남음(보류).
