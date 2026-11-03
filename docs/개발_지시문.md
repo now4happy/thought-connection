@@ -109,9 +109,21 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 - `tests/harness.js`, `tests/t1.js`, `tests/t2.js`, `tests/t3.js`, `tests/t6.js`, `tests/t8.js`
 - `v3.3.8/` (Gemini 연결판, Worker 포함)
 
-### 웹 주소로도 못 읽으면
+### 링크가 안 열리면, 예전 방식으로 돌아가지 않는다
 
-웹 주소로도 파일이 안 열리면, 그 사실을 숨기지 않고 §6 멈춤 규칙으로 간다. "읽었다"고 거짓말하지 않는다.
+링크가 안 열리면 zip 첨부 방식(예전 방식)으로 돌아가지 않는다. 링크가 열리는 방식을 다시 찾는 것이 과제다. 순서대로 시도한다.
+
+1. 한글 파일명 raw 주소가 안 되면, 영문 파일명 복사본을 쓴다. (한글 주소 인코딩 문제일 수 있다.)
+   - 영문 지시문: `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/INSTRUCTION.md`
+   - 영문 마인드맵: `https://raw.githubusercontent.com/now4happy/thought-connection/main/docs/mindmap-v1.8.html`
+2. raw 주소가 안 되면, 깃허브 웹 페이지 주소를 쓴다.
+   - `https://github.com/now4happy/thought-connection/blob/main/docs/개발_지시문.md`
+3. 깃허브 웹 페이지도 안 되면, Pages 주소를 쓴다.
+   - `https://now4happy.github.io/thought-connection/docs/개발_지시문.md`
+4. Pages도 안 되면, jsDelivr 주소를 쓴다.
+   - `https://cdn.jsdelivr.net/gh/now4happy/thought-connection@main/docs/개발_지시문.md`
+
+이 4가지를 다 시도해도 안 열리면, 그때 §6 멈춤 규칙으로 간다. 전달문에는 어느 주소가, 어떤 오류로 안 열렸는지 그대로 적는다. "읽었다"고 거짓말하지 않는다. 그리고 다음 과제는 링크 열림 원인을 찾는 것이지, zip 첨부로 돌아가는 것이 아니다.
 
 ## 6. 멈추면 바로 Muse 전달문 만드는 규칙 (앞으로 계속 적용)
 
@@ -142,6 +154,7 @@ https://raw.githubusercontent.com/now4happy/thought-connection/<브랜치>/<경�
 
 - **2026-11-03: 지시문 깃허브 공개 + 링크 공유 방식.** 지시문을 main `docs/개발_지시문.md`에 올리고, 다른 AI에게는 링크만 준다. 다른 AI는 그 링크에 가서 이 문서를 읽고 시작한다. 전체 압축파일(zip)은 깃허브에 올리지 않는다. 개발이 끝날 때마다 이 §8에 적어서 다음 작업이 이어지게 한다.
 - **2026-11-03: STATUS 동기화.** 로컬 COLLAB_STATUS.md를 main STATUS.md로 동기화했다. 이후로는 STATUS가 최신 상태를 정한다.
+- **2026-11-03: 링크 열림 원칙.** 링크가 안 열리면 예전 방식(zip 첨부)으로 돌아가지 않고, 링크가 열리는 방식을 다시 찾는다. 영문 파일명 복사본(`docs/INSTRUCTION.md`, `docs/mindmap-v1.8.html`)을 main에 두고, raw → 웹 페이지 → Pages → jsDelivr 순서로 시도하는 방법을 §5에 적었다.
 - **2026-11-03: 방향 전환.** 페이지 작은 수정 맴돔 중단. 큰 틀 우선, 작은 부분 고치기는 나중에. v3.3.14(실기기 자동 스크롤·타이핑 딜레이) 보류. 깃허브 지시문 중심, 마인드맵 중심, 다른 AI 스스로 문서 판단, 멈추면 바로 Muse 전달문 규칙 추가. 지시문·마인드맵 v1.8 작성.
 - **2026-11-02: 공개 페이지 바로 올리기.** 검토 통과한 새 버전은 바로 main에 올리고 사용자에게 페이지 열어보라고 안내. 4bot 서버 적용·매매 봇 변경에는 적용 안 됨.
 - **2026-11-02: 라이브 페이지 v3.3.13.** 스크롤·키 반응 수정. 실기기 테스트: 화면 보임 좋아짐, 자동 스크롤 안 내려감(보류), 타이핑 약간 딜레이 남음(보류).
